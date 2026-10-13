@@ -1,15 +1,18 @@
 {
+  "id": "./index.html",
   "name": "Mes Cartes de Fidélité",
-  "short_name": "Fidélité",
-  "description": "Toutes tes cartes de fidélité au même endroit.",
+  "short_name": "Mes cartes",
+  "description": "Toutes tes cartes de fidélité au même endroit, même hors ligne.",
+  "lang": "fr",
+  "dir": "ltr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f7fb",
   "theme_color": "#f4f7fb",
-  "orientation": "portrait",
+  "categories": ["shopping", "lifestyle", "utilities"],
   "icons": [
-    {"src":"icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
   ]
 }
