@@ -96,6 +96,12 @@
     <label class="form-label" for="categoryInput">Catégorie</label>
     <select class="form-input" id="categoryInput"></select>
 
+    <label class="check-row"><input type="checkbox" id="giftToggle"> <span>Carte cadeau avec solde</span></label>
+    <div id="giftFields" hidden>
+      <label class="form-label" for="balanceInput">Solde actuel (€)</label>
+      <input class="form-input" id="balanceInput" inputmode="decimal" placeholder="Ex. 25,00">
+    </div>
+
     <label class="form-label" for="codeTypeInput">Type de code</label>
     <select class="form-input" id="codeTypeInput">
       <option value="barcode">Code-barres</option>
@@ -187,6 +193,23 @@
   <h2 id="detailName"></h2>
   <p class="detail-type" id="detailType"></p>
   <div class="detail-meta" id="detailMeta" hidden></div>
+
+  <div class="balance-box" id="balanceBox" hidden>
+    <div class="balance-top">
+      <div><small>Solde restant</small><strong id="balanceValue">0,00 €</strong></div>
+      <button class="text-button" id="toggleHistory" type="button">Historique</button>
+    </div>
+    <div class="balance-form">
+      <input class="form-input" id="amountInput" inputmode="decimal" placeholder="Montant (€)" aria-label="Montant">
+      <input class="form-input" id="amountNote" maxlength="40" placeholder="Note (facultatif)" aria-label="Note">
+      <div class="balance-actions">
+        <button class="secondary-button spend" id="spendButton" type="button">− Dépense</button>
+        <button class="secondary-button" id="topupButton" type="button">+ Recharge</button>
+      </div>
+    </div>
+    <ul class="history-list" id="historyList" hidden></ul>
+    <button class="text-button" id="undoLast" type="button" hidden>Annuler la dernière opération</button>
+  </div>
 
   <div class="code-box" id="codeBox" role="button" tabindex="0" aria-label="Agrandir le code" hidden>
     <svg id="barcodeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
