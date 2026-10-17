@@ -32,6 +32,16 @@
     <input id="searchInput" type="search" placeholder="Rechercher une carte" autocomplete="off">
   </label>
 
+  <div class="tabs" id="tabs" role="tablist">
+    <button class="tab active" id="tabLoyalty" role="tab" aria-selected="true" type="button">Cartes de fidélité <span id="countLoyalty">0</span></button>
+    <button class="tab" id="tabGift" role="tab" aria-selected="false" type="button">Cartes cadeaux <span id="countGift">0</span></button>
+  </div>
+  <button class="other-hint" id="otherHint" type="button" hidden></button>
+  <div class="gift-total" id="giftTotal" hidden>
+    <small id="giftTotalLabel">Total restant</small>
+    <strong id="giftTotalValue">0,00 €</strong>
+  </div>
+
   <div class="toolbar" id="toolbar">
     <div class="filter-row" id="filterRow" aria-label="Filtres"></div>
     <div class="sort-row">
@@ -62,8 +72,8 @@
 
   <section id="emptyState" class="empty-state" hidden>
     <div class="empty-icon" aria-hidden="true">💳</div>
-    <h2>Aucune carte</h2>
-    <p>Ajoute ta première carte de fidélité pour la retrouver en caisse, même sans réseau.</p>
+    <h2 id="emptyTitle">Aucune carte</h2>
+    <p id="emptyText">Ajoute ta première carte de fidélité pour la retrouver en caisse, même sans réseau.</p>
     <button class="primary-button" id="emptyAddButton" type="button">Ajouter une carte</button>
   </section>
 </main>
@@ -79,6 +89,11 @@
     <button class="close-button" id="closeForm" type="button" aria-label="Fermer">×</button>
   </div>
   <form id="cardForm" autocomplete="off">
+    <div class="segmented" id="kindSwitch" role="radiogroup" aria-label="Type de carte">
+      <button type="button" class="seg active" data-kind="loyalty">Fidélité</button>
+      <button type="button" class="seg" data-kind="gift">Cadeau</button>
+    </div>
+
     <div class="logo-upload">
       <button type="button" class="logo-preview" id="logoPreview" aria-label="Choisir un logo">🏪</button>
       <div>
@@ -96,7 +111,6 @@
     <label class="form-label" for="categoryInput">Catégorie</label>
     <select class="form-input" id="categoryInput"></select>
 
-    <label class="check-row"><input type="checkbox" id="giftToggle"> <span>Carte cadeau avec solde</span></label>
     <div id="giftFields" hidden>
       <label class="form-label" for="balanceInput">Solde actuel (€)</label>
       <input class="form-input" id="balanceInput" inputmode="decimal" placeholder="Ex. 25,00">
