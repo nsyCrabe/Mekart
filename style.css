@@ -215,3 +215,18 @@ textarea.form-input{min-height:76px;padding:12px 13px;resize:vertical}
 .balance-box .text-button{margin-top:10px}
 .card-badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .card-balance{padding:3px 9px;border-radius:999px;background:#00000050;color:#fff;font-size:.78rem;font-weight:800}
+
+/* ---------- v4.3 : onglets Fidélité / Cadeaux ---------- */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0 4px;padding:4px;border-radius:16px;background:var(--soft)}
+.tab{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 6px;min-height:46px;padding:4px 8px;border:0;border-radius:12px;background:transparent;color:var(--muted);font-weight:800;font-size:.82rem;line-height:1.15;text-align:center}
+.tab span{min-width:22px;padding:1px 7px;border-radius:999px;background:var(--line);font-size:.72rem}
+.tab.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px #0002}
+.tab.active span{background:var(--accent);color:var(--on-accent)}
+.gift-total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:10px 0 0;padding:14px 16px;border-radius:16px;background:var(--soft)}
+.gift-total small{color:var(--muted);font-weight:700;font-size:.78rem}
+.gift-total strong{font-size:1.5rem;letter-spacing:-.02em}
+.other-hint{display:block;width:100%;margin:8px 0 0;padding:10px 12px;border:1px dashed var(--line);border-radius:12px;background:transparent;color:var(--accent);font-weight:800;font-size:.84rem;text-align:left}
+.segmented{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 16px;padding:4px;border-radius:14px;background:var(--soft)}
+.seg{min-height:44px;border:0;border-radius:11px;background:transparent;color:var(--muted);font-weight:800}
+.seg.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px #0002}
+.loyalty-card.empty{filter:grayscale(.85);opacity:.7}
