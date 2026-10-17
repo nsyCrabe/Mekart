@@ -111,8 +111,9 @@
     <label class="form-label" for="categoryInput">Catégorie</label>
     <select class="form-input" id="categoryInput"></select>
 
+    <label class="check-row" id="cagnotteRow"><input type="checkbox" id="cagnotteToggle"> <span>Cette carte a une cagnotte</span></label>
     <div id="giftFields" hidden>
-      <label class="form-label" for="balanceInput">Solde actuel (€)</label>
+      <label class="form-label" for="balanceInput" id="balanceLabel">Solde actuel (€)</label>
       <input class="form-input" id="balanceInput" inputmode="decimal" placeholder="Ex. 25,00">
     </div>
 
@@ -210,7 +211,7 @@
 
   <div class="balance-box" id="balanceBox" hidden>
     <div class="balance-top">
-      <div><small>Solde restant</small><strong id="balanceValue">0,00 €</strong></div>
+      <div><small id="balanceCaption">Solde restant</small><strong id="balanceValue">0,00 €</strong></div>
       <button class="text-button" id="toggleHistory" type="button">Historique</button>
     </div>
     <div class="balance-form">
