@@ -385,32 +385,12 @@ function showForm(id = null) {
   $('codeTypeInput').value = c?.codeType || 'barcode';
   $('notesInput').value = c?.notes || '';
   $('categoryInput').value = c?.category || '';
-  $('tagsInput').value = (c?.tags || []).join(', ');
-  renderTagSuggestions();
   selectedColor = c?.color || COLORS[0];
   selectedLogo = c?.logo || null;
   scannedFormat = c?.format || null;
   updateLogoPreview();
   renderColors();
   toggleCodeFields();
-}
-function renderTagSuggestions() {
-  const box = $('tagSuggestions');
-  box.replaceChildren();
-  const current = parseTags($('tagsInput').value).map(norm);
-  const all = new Map();
-  cards.forEach(c => (c.tags || []).forEach(t => { if (!all.has(norm(t))) all.set(norm(t), t); }));
-  [...all].forEach(([k, t]) => {
-    const b = el('button', { type: 'button', class: `chip small${current.includes(k) ? ' active' : ''}`, text: `#${t}` });
-    b.addEventListener('click', () => {
-      const list = parseTags($('tagsInput').value);
-      const idx = list.findIndex(x => norm(x) === k);
-      if (idx >= 0) list.splice(idx, 1); else list.push(t);
-      $('tagsInput').value = list.join(', ');
-      renderTagSuggestions();
-    });
-    box.append(b);
-  });
 }
 function toggleCodeFields() { $('codeFields').hidden = $('codeTypeInput').value === 'none'; }
 
@@ -464,7 +444,7 @@ function saveCard(e) {
   const codeType = $('codeTypeInput').value;
   const code = codeType === 'none' ? '' : $('codeInput').value.trim();
   if (codeType !== 'none' && !code) return toast('Ajoute le numéro, ou choisis « Aucun code ».');
-  const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), format: scannedFormat || null, category: $('categoryInput').value, tags: parseTags($('tagsInput').value) };
+  const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), format: scannedFormat || null, category: $('categoryInput').value };
   const backup = JSON.stringify(cards);
   if (editingId) Object.assign(cards.find(c => c.id === editingId), data);
   else cards.push({ id: uid(), ...data, createdAt: Date.now(), fav: false, uses: 0, order: Math.max(-1, ...cards.map(c => (typeof c.order === 'number' ? c.order : -1))) + 1 });
@@ -719,7 +699,6 @@ $('reorderButton').addEventListener('click', () => setReorder(!reorderMode));
 $('reorderDone').addEventListener('click', () => setReorder(false));
 $('cardsGrid').addEventListener('pointerdown', onGridPointerDown);
 $('cardsGrid').addEventListener('contextmenu', e => { if (reorderMode) e.preventDefault(); });
-$('tagsInput').addEventListener('input', renderTagSuggestions);
 $('imageButton').addEventListener('click', () => $('imageInput').click());
 $('imageInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await readCodeFromImage(f); e.target.value = ''; });
 $('forceUpdateButton').addEventListener('click', forceUpdate);
