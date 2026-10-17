@@ -7,7 +7,7 @@ const THEME_KEY = 'loyalty_theme_v2';
 const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
-const APP_VERSION = '4.3';
+const APP_VERSION = '4.4';
 
 const CATEGORIES = [
   { id: 'courses', name: 'Courses', emoji: '🛒' },
@@ -93,6 +93,9 @@ function logoNode(card) {
 }
 /* Une carte est « cadeau » si elle a un solde ; les anciennes cartes sont classées automatiquement */
 const kindOf = c => (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (c.balance != null ? 'gift' : 'loyalty');
+const opLabels = c => kindOf(c) === 'gift'
+  ? { cap: 'Solde restant', spend: 'Dépense', topup: 'Recharge', spendBtn: '− Dépense', topupBtn: '+ Recharge' }
+  : { cap: 'Cagnotte', spend: 'Cagnotte utilisée', topup: 'Cagnotte gagnée', spendBtn: '− Utilisée', topupBtn: '+ Gagnée' };
 const round2 = n => Math.round(n * 100) / 100;
 const fmtMoney = n => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
 const fmtDate = t => new Date(t).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -200,9 +203,10 @@ function ensureOrder() {
     .forEach(c => { c.order = next++; });
 }
 const tabCards = () => cards.filter(c => kindOf(c) === tab);
-const isSpent = c => c.balance != null && c.balance <= 0.004;
+const isSpent = c => kindOf(c) === 'gift' && c.balance != null && c.balance <= 0.004;   // « épuisée » : cartes cadeaux seulement
 function matchesFilter(c) {
   if (filter.kind === 'fav') return !!c.fav;
+  if (filter.kind === 'cagnotte') return c.balance != null;
   if (filter.kind === 'cat') return c.category === filter.value;
   if (filter.kind === 'tag') return (c.tags || []).some(t => norm(t) === filter.value);
   return true;
@@ -237,6 +241,7 @@ function renderFilters(pool) {
   };
   add('all', '', 'Toutes');
   if (pool.some(c => c.fav)) add('fav', '', '★ Favorites');
+  if (tab === 'loyalty' && pool.some(c => c.balance != null)) add('cagnotte', '', '💰 Avec cagnotte');
   CATEGORIES.filter(cat => pool.some(c => c.category === cat.id)).forEach(cat => add('cat', cat.id, `${cat.emoji} ${cat.name}`));
   const tags = new Map();
   pool.forEach(c => (c.tags || []).forEach(t => { const k = norm(t); if (!tags.has(k)) tags.set(k, t); }));
@@ -281,13 +286,19 @@ function render() {
     $('reorderBar').hidden = true;
   }
 
-  // Total des cartes cadeaux
+  // Bandeau du haut : solde des cartes cadeaux, ou cagnottes des cartes de fidélité
   const gt = $('giftTotal');
-  gt.hidden = !(tab === 'gift' && !none);
+  const withBalance = pool.filter(c => c.balance != null);
+  gt.hidden = none || !withBalance.length;
   if (!gt.hidden) {
-    const active = pool.filter(c => !isSpent(c)).length;
-    $('giftTotalLabel').textContent = `Total restant · ${active} carte${active > 1 ? 's' : ''} avec du solde`;
-    $('giftTotalValue').textContent = fmtMoney(round2(pool.reduce((sum, c) => sum + (c.balance || 0), 0)));
+    const n = withBalance.length;
+    if (tab === 'gift') {
+      const active = withBalance.filter(c => !isSpent(c)).length;
+      $('giftTotalLabel').textContent = `Total restant · ${active} carte${active > 1 ? 's' : ''} avec du solde`;
+    } else {
+      $('giftTotalLabel').textContent = `Cagnottes disponibles · ${n} carte${n > 1 ? 's' : ''}`;
+    }
+    $('giftTotalValue').textContent = fmtMoney(round2(withBalance.reduce((t, c) => t + c.balance, 0)));
   }
 
   // Résultats de recherche dans l'autre onglet
@@ -329,7 +340,7 @@ function render() {
     const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(c));
     const typeText = spent ? 'Épuisée' : (cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType));
     b.append(
-      el('div', { class: 'card-top' }, logo, (c.fav || c.balance != null) ? el('div', { class: 'card-badges' }, c.balance != null ? el('span', { class: 'card-balance', text: fmtMoney(c.balance) }) : null, c.fav ? el('span', { class: 'card-fav', text: '★' }) : null) : null),
+      el('div', { class: 'card-top' }, logo, (c.fav || c.balance != null) ? el('div', { class: 'card-badges' }, c.balance != null ? el('span', { class: 'card-balance', text: (kindOf(c) === 'loyalty' ? '💰 ' : '') + fmtMoney(c.balance) }) : null, c.fav ? el('span', { class: 'card-fav', text: '★' }) : null) : null),
       el('div', {}, el('p', { class: 'card-name', text: c.name }), el('p', { class: 'card-type', text: typeText }))
     );
     b.addEventListener('click', () => { if (!reorderMode) openDetail(c.id); });
@@ -462,6 +473,7 @@ function showForm(id = null) {
   $('notesInput').value = c?.notes || '';
   $('categoryInput').value = c?.category || '';
   $('balanceInput').value = c && c.balance != null ? String(c.balance).replace('.', ',') : '';
+  $('cagnotteToggle').checked = !!c && kindOf(c) === 'loyalty' && c.balance != null;
   setFormKind(c ? kindOf(c) : tab);
   selectedColor = c?.color || COLORS[0];
   selectedLogo = c?.logo || null;
@@ -470,10 +482,16 @@ function showForm(id = null) {
   renderColors();
   toggleCodeFields();
 }
+function updateBalanceFields() {
+  const show = formKind === 'gift' || (formKind === 'loyalty' && $('cagnotteToggle').checked);
+  $('giftFields').hidden = !show;
+  $('balanceLabel').textContent = formKind === 'gift' ? 'Solde actuel (€)' : 'Cagnotte actuelle (€)';
+}
 function setFormKind(k) {
   formKind = k;
   document.querySelectorAll('#kindSwitch .seg').forEach(b => b.classList.toggle('active', b.dataset.kind === k));
-  $('giftFields').hidden = k !== 'gift';
+  $('cagnotteRow').hidden = k !== 'loyalty';
+  updateBalanceFields();
   $('formTitle').textContent = editingId ? 'Modifier la carte' : (k === 'gift' ? 'Nouvelle carte cadeau' : 'Nouvelle carte');
 }
 /* Met à jour le solde d'une carte et l'historique (création, correction manuelle, ou désactivation) */
@@ -481,13 +499,13 @@ function applyBalance(card, next) {
   if (next === null) { delete card.balance; delete card.history; return; }
   if (card.balance == null) {
     card.balance = next;
-    card.history = [{ t: Date.now(), d: next, a: next, n: 'Solde initial' }];
+    card.history = [{ t: Date.now(), d: next, a: next, n: card.kind === 'loyalty' ? 'Cagnotte initiale' : 'Solde initial' }];
     return;
   }
   if (Math.abs(card.balance - next) >= 0.005) {
     const d = round2(next - card.balance);
     card.balance = next;
-    card.history = [...(card.history || []), { t: Date.now(), d, a: next, n: 'Correction du solde' }].slice(-100);
+    card.history = [...(card.history || []), { t: Date.now(), d, a: next, n: card.kind === 'loyalty' ? 'Correction de la cagnotte' : 'Correction du solde' }].slice(-100);
   }
 }
 function toggleCodeFields() { $('codeFields').hidden = $('codeTypeInput').value === 'none'; }
@@ -543,13 +561,13 @@ function saveCard(e) {
   const code = codeType === 'none' ? '' : $('codeInput').value.trim();
   if (codeType !== 'none' && !code) return toast('Ajoute le numéro, ou choisis « Aucun code ».');
   let giftBalance = null;
-  if (formKind === 'gift') {
+  if (formKind === 'gift' || (formKind === 'loyalty' && $('cagnotteToggle').checked)) {
     giftBalance = parseAmount($('balanceInput').value, true);
-    if (giftBalance === null) return toast('Indique le solde de la carte (ex. 25,00).');
+    if (giftBalance === null) return toast(formKind === 'gift' ? 'Indique le solde de la carte (ex. 25,00).' : 'Indique le montant de la cagnotte (ex. 3,20).');
   }
-  if (editingId && formKind === 'loyalty') {
+  if (editingId && giftBalance === null) {
     const old = cards.find(c => c.id === editingId);
-    if (old && old.balance != null && (old.history || []).length > 1 && !confirm("Passer en carte de fidélité supprime le solde et l'historique. Continuer ?")) return;
+    if (old && old.balance != null && (old.history || []).length > 1 && !confirm("Retirer le solde ou la cagnotte supprime aussi son historique. Continuer ?")) return;
   }
   const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), kind: formKind, format: scannedFormat || null, category: $('categoryInput').value };
   const backup = JSON.stringify(cards);
@@ -632,6 +650,10 @@ function renderBalance(c) {
   const box = $('balanceBox');
   box.hidden = c.balance == null;
   if (c.balance == null) return;
+  const L = opLabels(c);
+  $('balanceCaption').textContent = L.cap;
+  $('spendButton').textContent = L.spendBtn;
+  $('topupButton').textContent = L.topupBtn;
   $('balanceValue').textContent = fmtMoney(c.balance);
   $('amountInput').value = '';
   $('amountNote').value = '';
@@ -641,7 +663,7 @@ function renderBalance(c) {
   const items = [...(c.history || [])].reverse();
   if (!items.length) list.append(el('li', { class: 'history-empty', text: 'Aucune opération.' }));
   items.forEach(h => list.append(el('li', {},
-    el('span', {}, el('strong', { text: h.n || (h.d < 0 ? 'Dépense' : 'Recharge') }), el('small', { text: fmtDate(h.t) })),
+    el('span', {}, el('strong', { text: h.n || (h.d < 0 ? L.spend : L.topup) }), el('small', { text: fmtDate(h.t) })),
     el('span', { class: `h-amount ${h.d < 0 ? 'neg' : 'pos'}`, text: `${h.d < 0 ? '−' : '+'}${fmtMoney(Math.abs(h.d))}` }))));
   $('undoLast').hidden = (c.history || []).length < 2;
 }
@@ -654,7 +676,7 @@ function balanceOp(sign) {
   const before = { balance: c.balance, history: c.history };
   const d = round2(sign * amount);
   c.balance = round2(c.balance + d);
-  c.history = [...(c.history || []), { t: Date.now(), d, a: c.balance, n: $('amountNote').value.trim().slice(0, 40) || (sign < 0 ? 'Dépense' : 'Recharge') }].slice(-100);
+  c.history = [...(c.history || []), { t: Date.now(), d, a: c.balance, n: $('amountNote').value.trim().slice(0, 40) || (sign < 0 ? opLabels(c).spend : opLabels(c).topup) }].slice(-100);
   if (!save()) { Object.assign(c, before); return toast('Stockage plein : impossible d\'enregistrer.'); }
   vibrate(20);
   renderBalance(c);
@@ -823,7 +845,7 @@ async function importCards(file) {
     if (!Array.isArray(list)) throw new Error('format');
     const known = new Set(cards.map(c => c.id));
     const added = list.filter(c => c && typeof c.name === 'string' && c.name && !known.has(c.id))
-      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: Number.isFinite(c.balance) ? 'gift' : 'loyalty' }));
+      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty') }));
     const backup = JSON.stringify(cards);
     cards.push(...added);
     ensureOrder();
@@ -857,6 +879,7 @@ $('cardsGrid').addEventListener('contextmenu', e => { if (reorderMode) e.prevent
 $('imageButton').addEventListener('click', () => $('imageInput').click());
 $('imageInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await readCodeFromImage(f); e.target.value = ''; });
 $('forceUpdateButton').addEventListener('click', forceUpdate);
+$('cagnotteToggle').addEventListener('change', updateBalanceFields);
 $('kindSwitch').addEventListener('click', e => { const b = e.target.closest('.seg'); if (b) setFormKind(b.dataset.kind); });
 $('tabLoyalty').addEventListener('click', () => setTab('loyalty'));
 $('tabGift').addEventListener('click', () => setTab('gift'));
