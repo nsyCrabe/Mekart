@@ -33,13 +33,20 @@
   </label>
 
   <div class="toolbar" id="toolbar">
-    <button class="chip active" id="filterAll" type="button">Toutes</button>
-    <button class="chip" id="filterFav" type="button">★ Favorites</button>
-    <select class="sort-select" id="sortSelect" aria-label="Trier les cartes">
-      <option value="recent">Récentes</option>
-      <option value="used">Plus utilisées</option>
-      <option value="az">A → Z</option>
-    </select>
+    <div class="filter-row" id="filterRow" aria-label="Filtres"></div>
+    <div class="sort-row">
+      <select class="sort-select" id="sortSelect" aria-label="Trier les cartes">
+        <option value="recent">Récentes</option>
+        <option value="used">Plus utilisées</option>
+        <option value="az">A → Z</option>
+        <option value="manual">Mon ordre</option>
+      </select>
+      <button class="chip" id="reorderButton" type="button">↕ Réorganiser</button>
+    </div>
+  </div>
+  <div class="reorder-bar" id="reorderBar" hidden>
+    <span>Glisse les cartes pour les déplacer.</span>
+    <button class="text-button" id="reorderDone" type="button">Terminer</button>
   </div>
 
   <section class="quick-guide" id="quickGuide">
@@ -86,6 +93,13 @@
     <label class="form-label" for="nameInput">Nom du magasin</label>
     <input class="form-input" id="nameInput" required maxlength="40" placeholder="Ex. Carrefour">
 
+    <label class="form-label" for="categoryInput">Catégorie</label>
+    <select class="form-input" id="categoryInput"></select>
+
+    <label class="form-label" for="tagsInput">Étiquettes (séparées par des virgules)</label>
+    <input class="form-input" id="tagsInput" maxlength="120" placeholder="Ex. famille, voiture">
+    <div class="tag-suggestions" id="tagSuggestions"></div>
+
     <label class="form-label" for="codeTypeInput">Type de code</label>
     <select class="form-input" id="codeTypeInput">
       <option value="barcode">Code-barres</option>
@@ -98,6 +112,8 @@
       <div class="code-row">
         <input class="form-input" id="codeInput" inputmode="text" placeholder="Saisis le numéro">
         <button class="scan-button" id="scanButton" type="button" aria-label="Scanner avec l'appareil photo">📷</button>
+        <button class="scan-button" id="imageButton" type="button" aria-label="Lire le code depuis une image">🖼️</button>
+        <input id="imageInput" type="file" accept="image/*" hidden>
       </div>
     </div>
 
@@ -146,6 +162,10 @@
       <span class="menu-icon" aria-hidden="true">📲</span>
       <span><strong>Installer l'application</strong><small>Ajoute-la à ton écran d'accueil</small></span>
     </button>
+    <button class="menu-item" id="forceUpdateButton" type="button">
+      <span class="menu-icon" aria-hidden="true">🔄</span>
+      <span><strong>Forcer la mise à jour</strong><small>Recharge la dernière version, sans toucher à tes cartes</small></span>
+    </button>
     <button class="menu-item" id="showGuideButton" type="button">
       <span class="menu-icon" aria-hidden="true">💡</span>
       <span><strong>Réafficher l'aide</strong><small>Le bandeau de démarrage</small></span>
@@ -153,6 +173,7 @@
   </div>
   <input id="importInput" type="file" accept="application/json,.json" hidden>
   <p class="menu-note">Tes cartes sont enregistrées uniquement sur cet appareil. Si tu changes de téléphone ou effaces les données du navigateur, elles disparaissent : exporte une sauvegarde de temps en temps.</p>
+  <p class="menu-note" id="versionNote"></p>
 </section>
 
 <!-- Fiche carte -->
@@ -169,6 +190,7 @@
   <div class="detail-logo" id="detailLogo"></div>
   <h2 id="detailName"></h2>
   <p class="detail-type" id="detailType"></p>
+  <div class="detail-meta" id="detailMeta" hidden></div>
 
   <div class="code-box" id="codeBox" role="button" tabindex="0" aria-label="Agrandir le code" hidden>
     <svg id="barcodeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
