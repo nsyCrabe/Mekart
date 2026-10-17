@@ -6,6 +6,21 @@ const CARDS_KEY = 'loyalty_cards_v1';
 const THEME_KEY = 'loyalty_theme_v2';
 const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
+const APP_VERSION = '4.1';
+
+const CATEGORIES = [
+  { id: 'courses', name: 'Courses', emoji: '🛒' },
+  { id: 'essence', name: 'Essence', emoji: '⛽' },
+  { id: 'pharmacie', name: 'Pharmacie', emoji: '💊' },
+  { id: 'mode', name: 'Mode', emoji: '👗' },
+  { id: 'beaute', name: 'Beauté', emoji: '💄' },
+  { id: 'resto', name: 'Restauration', emoji: '🍔' },
+  { id: 'maison', name: 'Maison & bricolage', emoji: '🛠️' },
+  { id: 'loisirs', name: 'Loisirs & culture', emoji: '🎬' },
+  { id: 'voyage', name: 'Voyage & transport', emoji: '✈️' },
+  { id: 'autre', name: 'Autre', emoji: '💳' }
+];
+const catById = id => CATEGORIES.find(c => c.id === id);
 
 const COLORS = ['#2264d1', '#8b5cf6', '#e05252', '#e88b27', '#168c65', '#008da8', '#d04d91', '#475569'];
 
@@ -33,7 +48,8 @@ let editingId = null;
 let openedId = null;
 let selectedColor = COLORS[0];
 let selectedLogo = null;
-let filterFav = false;
+let filter = { kind: 'all', value: '' };   // all | fav | cat | tag
+let reorderMode = false;
 let sortMode = 'recent';
 let themePref = 'auto';
 let stream = null;
@@ -72,6 +88,13 @@ function logoNode(card) {
   if (card.logo) return el('img', { src: card.logo, alt: `Logo ${card.name}` });
   return document.createTextNode(initials(card.name));
 }
+function parseTags(str) {
+  const seen = new Set();
+  return (str || '').split(/[,;\n]/)
+    .map(t => t.trim().replace(/^#/, '').slice(0, 20))
+    .filter(t => { const k = norm(t); if (!t || seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 8);
+}
 function vibrate(ms = 12) { try { navigator.vibrate && navigator.vibrate(ms); } catch {} }
 
 /* ---------- Toasts (avec action facultative) ---------- */
@@ -96,6 +119,8 @@ function load() {
   } catch { cards = []; }
   themePref = localStorage.getItem(THEME_KEY) || 'auto';
   sortMode = localStorage.getItem(SORT_KEY) || 'recent';
+  if (!['recent', 'used', 'az', 'manual'].includes(sortMode)) sortMode = 'recent';
+  ensureOrder();
   $('sortSelect').value = sortMode;
   $('quickGuide').hidden = localStorage.getItem(GUIDE_KEY) === '1';
   applyTheme();
@@ -150,16 +175,51 @@ function themeButton(t) {
 }
 
 /* ---------- Liste des cartes ---------- */
+/* Chaque carte a un numéro d'ordre (mode « Mon ordre »). Celles qui n'en ont pas sont ajoutées à la fin. */
+function ensureOrder() {
+  let next = Math.max(-1, ...cards.map(c => (typeof c.order === 'number' ? c.order : -1))) + 1;
+  cards.filter(c => typeof c.order !== 'number')
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+    .forEach(c => { c.order = next++; });
+}
+function matchesFilter(c) {
+  if (filter.kind === 'fav') return !!c.fav;
+  if (filter.kind === 'cat') return c.category === filter.value;
+  if (filter.kind === 'tag') return (c.tags || []).some(t => norm(t) === filter.value);
+  return true;
+}
 function sortedFiltered() {
   const q = norm($('searchInput').value.trim());
-  let list = cards.filter(c => (!filterFav || c.fav) && (!q || norm(c.name).includes(q) || norm(c.notes).includes(q)));
+  const list = cards.filter(c => matchesFilter(c) && (!q
+    || norm(c.name).includes(q) || norm(c.notes).includes(q)
+    || (c.tags || []).some(t => norm(t).includes(q))
+    || norm(catById(c.category)?.name).includes(q)));
   const byMode = {
     recent: (a, b) => (b.lastUsed || b.createdAt || 0) - (a.lastUsed || a.createdAt || 0),
     used: (a, b) => (b.uses || 0) - (a.uses || 0),
-    az: (a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
+    az: (a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }),
+    manual: (a, b) => (a.order ?? 1e9) - (b.order ?? 1e9)
   };
-  list.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || byMode[sortMode](a, b));
+  const cmp = byMode[sortMode] || byMode.recent;
+  list.sort((a, b) => (sortMode === 'manual' ? 0 : (b.fav ? 1 : 0) - (a.fav ? 1 : 0)) || cmp(a, b));
   return list;
+}
+function renderFilters() {
+  const row = $('filterRow');
+  row.replaceChildren();
+  const add = (kind, value, label) => {
+    const on = filter.kind === kind && filter.value === value;
+    const b = el('button', { type: 'button', class: `chip${on ? ' active' : ''}`, text: label });
+    b.addEventListener('click', () => { filter = { kind, value }; render(); });
+    row.append(b);
+  };
+  add('all', '', 'Toutes');
+  if (cards.some(c => c.fav)) add('fav', '', '★ Favorites');
+  CATEGORIES.filter(cat => cards.some(c => c.category === cat.id)).forEach(cat => add('cat', cat.id, `${cat.emoji} ${cat.name}`));
+  const tags = new Map();
+  cards.forEach(c => (c.tags || []).forEach(t => { const k = norm(t); if (!tags.has(k)) tags.set(k, t); }));
+  [...tags].sort((a, b) => a[1].localeCompare(b[1], 'fr')).forEach(([k, t]) => add('tag', k, `#${t}`));
+  row.hidden = row.children.length < 2;
 }
 function render() {
   const grid = $('cardsGrid');
@@ -169,16 +229,24 @@ function render() {
   $('emptyState').hidden = !none;
   $('toolbar').hidden = none;
   $('quickGuide').hidden = none ? true : localStorage.getItem(GUIDE_KEY) === '1';
-  if (none) return;
+  if (none) { reorderMode = false; $('reorderBar').hidden = true; return; }
+
+  if (filter.kind !== 'all' && !cards.some(matchesFilter)) filter = { kind: 'all', value: '' };
+  renderFilters();
+  $('reorderBar').hidden = !reorderMode;
+  $('reorderButton').classList.toggle('active', reorderMode);
+  grid.classList.toggle('reordering', reorderMode);
 
   const list = sortedFiltered();
   if (!list.length) {
-    grid.append(el('p', { class: 'no-result', text: filterFav && !$('searchInput').value ? 'Aucune carte en favori.' : 'Aucune carte trouvée.' }));
+    grid.append(el('p', { class: 'no-result', text: $('searchInput').value ? 'Aucune carte trouvée.' : 'Aucune carte dans ce filtre.' }));
     return;
   }
   list.forEach((c, i) => {
     const color = c.color || COLORS[0];
+    const cat = catById(c.category);
     const b = el('button', { type: 'button', class: 'loyalty-card', 'aria-label': `Ouvrir la carte ${c.name}` });
+    b.dataset.id = c.id;
     b.style.setProperty('--card-color', color);
     b.style.setProperty('--card-color-dark', darken(color));
     b.style.setProperty('--card-fg', isLight(color) ? '#14181f' : '#fff');
@@ -186,11 +254,87 @@ function render() {
     const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(c));
     b.append(
       el('div', { class: 'card-top' }, logo, c.fav ? el('span', { class: 'card-fav', text: '★' }) : null),
-      el('div', {}, el('p', { class: 'card-name', text: c.name }), el('p', { class: 'card-type', text: typeLabel(c.codeType) }))
+      el('div', {}, el('p', { class: 'card-name', text: c.name }), el('p', { class: 'card-type', text: cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType) }))
     );
-    b.addEventListener('click', () => openDetail(c.id));
+    b.addEventListener('click', () => { if (!reorderMode) openDetail(c.id); });
     grid.append(b);
   });
+}
+
+/* ---------- Réorganisation par glisser-déposer ---------- */
+function setReorder(on) {
+  reorderMode = on;
+  if (on) {
+    if (sortMode !== 'manual') { sortMode = 'manual'; localStorage.setItem(SORT_KEY, sortMode); $('sortSelect').value = 'manual'; }
+    ensureOrder(); save();
+  }
+  render();
+}
+let drag = null;
+function onGridPointerDown(e) {
+  if (!reorderMode || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const card = e.target.closest('.loyalty-card');
+  if (!card) return;
+  const r = card.getBoundingClientRect();
+  drag = { card, pid: e.pointerId, sx: e.clientX, sy: e.clientY, ox: e.clientX - r.left, oy: e.clientY - r.top, x: e.clientX, y: e.clientY, active: false, timer: null };
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup', onDragEnd);
+  window.addEventListener('pointercancel', onDragEnd);
+}
+function onDragMove(e) {
+  if (!drag || e.pointerId !== drag.pid) return;
+  drag.x = e.clientX; drag.y = e.clientY;
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+    drag.active = true;
+    drag.card.classList.add('dragging');
+    vibrate(15);
+    drag.timer = setInterval(dragTick, 16);
+  }
+  e.preventDefault();
+  dragUpdate();
+}
+function dragTick() {
+  if (!drag) return;
+  if (drag.y < 90) window.scrollBy(0, -14);
+  else if (drag.y > innerHeight - 110) window.scrollBy(0, 14);
+  dragUpdate();
+}
+function dragUpdate() {
+  const card = drag.card;
+  // La carte survolée prend la place de celle qu'on déplace
+  const under = document.elementsFromPoint(drag.x, drag.y).find(n => n !== card && n.classList && n.classList.contains('loyalty-card'));
+  if (under) {
+    if (card.compareDocumentPosition(under) & Node.DOCUMENT_POSITION_FOLLOWING) under.after(card); else under.before(card);
+  }
+  // La carte suit le doigt
+  card.style.transform = 'none';
+  const r = card.getBoundingClientRect();
+  card.style.transform = `translate(${drag.x - drag.ox - r.left}px, ${drag.y - drag.oy - r.top}px) scale(1.04)`;
+}
+function onDragEnd(e) {
+  if (!drag || e.pointerId !== drag.pid) return;
+  window.removeEventListener('pointermove', onDragMove);
+  window.removeEventListener('pointerup', onDragEnd);
+  window.removeEventListener('pointercancel', onDragEnd);
+  clearInterval(drag.timer);
+  const { card, active } = drag;
+  drag = null;
+  card.classList.remove('dragging');
+  card.style.transform = '';
+  if (active) commitOrder();
+}
+function commitOrder() {
+  const ids = [...$('cardsGrid').querySelectorAll('.loyalty-card')].map(n => n.dataset.id);
+  const visible = new Set(ids);
+  ensureOrder();
+  const full = [...cards].sort((a, b) => a.order - b.order);
+  const slots = [];
+  full.forEach((c, i) => { if (visible.has(c.id)) slots.push(i); });
+  ids.forEach((id, k) => { full[slots[k]] = cards.find(c => c.id === id); });
+  full.forEach((c, i) => { c.order = i; });
+  save();
+  render();
 }
 
 /* ---------- Pile de fenêtres + bouton Retour du téléphone ---------- */
@@ -240,12 +384,33 @@ function showForm(id = null) {
   $('codeInput').value = c?.code || '';
   $('codeTypeInput').value = c?.codeType || 'barcode';
   $('notesInput').value = c?.notes || '';
+  $('categoryInput').value = c?.category || '';
+  $('tagsInput').value = (c?.tags || []).join(', ');
+  renderTagSuggestions();
   selectedColor = c?.color || COLORS[0];
   selectedLogo = c?.logo || null;
   scannedFormat = c?.format || null;
   updateLogoPreview();
   renderColors();
   toggleCodeFields();
+}
+function renderTagSuggestions() {
+  const box = $('tagSuggestions');
+  box.replaceChildren();
+  const current = parseTags($('tagsInput').value).map(norm);
+  const all = new Map();
+  cards.forEach(c => (c.tags || []).forEach(t => { if (!all.has(norm(t))) all.set(norm(t), t); }));
+  [...all].forEach(([k, t]) => {
+    const b = el('button', { type: 'button', class: `chip small${current.includes(k) ? ' active' : ''}`, text: `#${t}` });
+    b.addEventListener('click', () => {
+      const list = parseTags($('tagsInput').value);
+      const idx = list.findIndex(x => norm(x) === k);
+      if (idx >= 0) list.splice(idx, 1); else list.push(t);
+      $('tagsInput').value = list.join(', ');
+      renderTagSuggestions();
+    });
+    box.append(b);
+  });
 }
 function toggleCodeFields() { $('codeFields').hidden = $('codeTypeInput').value === 'none'; }
 
@@ -299,10 +464,10 @@ function saveCard(e) {
   const codeType = $('codeTypeInput').value;
   const code = codeType === 'none' ? '' : $('codeInput').value.trim();
   if (codeType !== 'none' && !code) return toast('Ajoute le numéro, ou choisis « Aucun code ».');
-  const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), format: scannedFormat || null };
+  const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), format: scannedFormat || null, category: $('categoryInput').value, tags: parseTags($('tagsInput').value) };
   const backup = JSON.stringify(cards);
   if (editingId) Object.assign(cards.find(c => c.id === editingId), data);
-  else cards.push({ id: uid(), ...data, createdAt: Date.now(), fav: false, uses: 0 });
+  else cards.push({ id: uid(), ...data, createdAt: Date.now(), fav: false, uses: 0, order: Math.max(-1, ...cards.map(c => (typeof c.order === 'number' ? c.order : -1))) + 1 });
   if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : choisis un logo plus léger.'); }
   render();
   closeLayer();
@@ -343,6 +508,7 @@ function openDetail(id) {
   $('detailNotes').textContent = c.notes || '';
   $('copyCode').hidden = !c.code;
   syncFavButton(c);
+  renderDetailMeta(c);
 
   const box = $('codeBox');
   const svg = $('barcodeSvg'), qr = $('qrHolder');
@@ -362,6 +528,14 @@ function openDetail(id) {
 
   openLayer('detail');
   keepAwake();
+}
+function renderDetailMeta(c) {
+  const box = $('detailMeta');
+  box.replaceChildren();
+  const cat = catById(c.category);
+  if (cat) box.append(el('span', { class: 'tag cat', text: `${cat.emoji} ${cat.name}` }));
+  (c.tags || []).forEach(t => box.append(el('span', { class: 'tag', text: `#${t}` })));
+  box.hidden = !box.children.length;
 }
 function cleanupDetail() {
   openedId = null;
@@ -424,6 +598,79 @@ function stopScan() {
   stream = null;
 }
 
+/* ---------- Lecture d'un code depuis une image ---------- */
+async function readCodeFromImage(file) {
+  if (!('BarcodeDetector' in window)) return toast("Lecture d'image indisponible sur ce navigateur : saisis le numéro à la main.");
+  let bitmap;
+  try { bitmap = await createImageBitmap(file); } catch { return toast('Image impossible à lire.'); }
+  toast("Lecture de l'image…");
+  const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
+  let found = null;
+  // On essaie la taille d'origine, puis des versions réduites / agrandies (les captures d'écran sont souvent très grandes)
+  for (const scale of [1, 0.6, 0.35, 1.8]) {
+    try {
+      let src = bitmap;
+      if (scale !== 1) {
+        const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale);
+        if (w < 150 || h < 150 || Math.max(w, h) > 3500) continue;
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        src = cv;
+      }
+      const res = await detector.detect(src);
+      if (res.length) { found = res[0]; break; }
+    } catch {}
+  }
+  if (bitmap.close) bitmap.close();
+  if (!found) return toast('Aucun code détecté. Essaie une image plus nette, recadrée sur le code.');
+  const isQr = found.format === 'qr_code';
+  $('codeInput').value = found.rawValue;
+  $('codeTypeInput').value = isQr ? 'qrcode' : 'barcode';
+  scannedFormat = isQr ? null : (FORMAT_MAP[found.format] || null);
+  toggleCodeFields();
+  vibrate(30);
+  toast('Code trouvé ✓');
+}
+
+/* ---------- Forcer la mise à jour ---------- */
+async function forceUpdate() {
+  if (!confirm("Forcer la mise à jour ? L'app va se recharger. Tes cartes ne sont pas supprimées.")) return;
+  toast('Mise à jour en cours…');
+  const clearCaches = async () => {
+    if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); }
+  };
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    await clearCaches();
+    // Recharge les fichiers depuis le serveur (en ignorant aussi le cache HTTP du navigateur)
+    await Promise.all(['./', 'index.html', 'app.js', 'style.css', 'manifest.json', 'sw.js'].map(f => fetch(f, { cache: 'reload' }).catch(() => {})));
+    await clearCaches();
+  } catch {}
+  location.replace(location.pathname + '?maj=' + Date.now());
+}
+function setupServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      if (!w) return;
+      w.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) {
+          toast('Nouvelle version prête', { label: 'Recharger', run: () => location.reload() });
+        }
+      });
+    });
+    // Quand tu reviens sur l'app, on vérifie s'il existe une version plus récente
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
+}
+
 /* ---------- Sauvegarde (export / import) ---------- */
 function exportCards() {
   if (!cards.length) return toast('Aucune carte à exporter.');
@@ -441,9 +688,10 @@ async function importCards(file) {
     if (!Array.isArray(list)) throw new Error('format');
     const known = new Set(cards.map(c => c.id));
     const added = list.filter(c => c && typeof c.name === 'string' && c.name && !known.has(c.id))
-      .map(c => ({ ...c, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0] }));
+      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [] }));
     const backup = JSON.stringify(cards);
     cards.push(...added);
+    ensureOrder();
     if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : import impossible.'); }
     render();
     toast(added.length ? `${added.length} carte${added.length > 1 ? 's' : ''} importée${added.length > 1 ? 's' : ''} ✓` : 'Aucune nouvelle carte dans ce fichier.');
@@ -461,9 +709,20 @@ $('codeTypeInput').addEventListener('change', toggleCodeFields);
 $('codeInput').addEventListener('input', () => { scannedFormat = null; });
 
 $('searchInput').addEventListener('input', render);
-$('filterAll').addEventListener('click', () => { filterFav = false; $('filterAll').classList.add('active'); $('filterFav').classList.remove('active'); render(); });
-$('filterFav').addEventListener('click', () => { filterFav = true; $('filterFav').classList.add('active'); $('filterAll').classList.remove('active'); render(); });
-$('sortSelect').addEventListener('change', e => { sortMode = e.target.value; localStorage.setItem(SORT_KEY, sortMode); render(); });
+$('sortSelect').addEventListener('change', e => {
+  sortMode = e.target.value;
+  localStorage.setItem(SORT_KEY, sortMode);
+  if (sortMode === 'manual') { ensureOrder(); save(); } else reorderMode = false;
+  render();
+});
+$('reorderButton').addEventListener('click', () => setReorder(!reorderMode));
+$('reorderDone').addEventListener('click', () => setReorder(false));
+$('cardsGrid').addEventListener('pointerdown', onGridPointerDown);
+$('cardsGrid').addEventListener('contextmenu', e => { if (reorderMode) e.preventDefault(); });
+$('tagsInput').addEventListener('input', renderTagSuggestions);
+$('imageButton').addEventListener('click', () => $('imageInput').click());
+$('imageInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await readCodeFromImage(f); e.target.value = ''; });
+$('forceUpdateButton').addEventListener('click', forceUpdate);
 
 $('hideGuide').addEventListener('click', () => { $('quickGuide').hidden = true; localStorage.setItem(GUIDE_KEY, '1'); });
 $('showGuideButton').addEventListener('click', () => { localStorage.removeItem(GUIDE_KEY); render(); closeLayer(); });
@@ -538,7 +797,29 @@ $('deleteCard').addEventListener('click', () => {
 $('scanButton').addEventListener('click', openScanner);
 $('closeScanner').addEventListener('click', closeLayer);
 
+/* ---------- Raccourcis du manifest (appui long sur l'icône) ---------- */
+function handleLaunchAction() {
+  const action = new URLSearchParams(location.search).get('action');
+  if (!action) return;
+  history.replaceState(null, '', location.pathname); // nettoie l'URL
+  if (action === 'add') {
+    showForm(); openLayer('form');
+  } else if (action === 'favorites') {
+    filter = { kind: 'fav', value: '' };
+    render();
+  } else if (action === 'last') {
+    const last = [...cards].filter(c => c.lastUsed).sort((a, b) => b.lastUsed - a.lastUsed)[0];
+    if (last) openDetail(last.id); else toast("Aucune carte utilisée pour l'instant.");
+  }
+}
+
 /* ---------- Démarrage ---------- */
+$('categoryInput').replaceChildren(
+  el('option', { value: '', text: 'Aucune catégorie' }),
+  ...CATEGORIES.map(c => el('option', { value: c.id, text: `${c.emoji} ${c.name}` }))
+);
+$('versionNote').textContent = `Version ${APP_VERSION}`;
 load();
 render();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+handleLaunchAction();
+setupServiceWorker();
