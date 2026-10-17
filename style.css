@@ -192,3 +192,26 @@ textarea.form-input{min-height:76px;padding:12px 13px;resize:vertical}
 .detail-meta{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:-6px 0 14px}
 .tag{padding:4px 10px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:.76rem;font-weight:700}
 .tag.cat{color:var(--text)}
+
+/* ---------- v4.2 : cartes cadeaux avec solde ---------- */
+.check-row{display:flex;align-items:center;gap:10px;margin:18px 0 0;font-weight:700;font-size:.92rem}
+.check-row input{width:22px;height:22px;accent-color:var(--accent)}
+.balance-box{margin:0 0 14px;padding:14px;border-radius:18px;background:var(--soft)}
+.balance-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.balance-top small{display:block;color:var(--muted);font-size:.74rem;font-weight:700}
+.balance-top strong{font-size:1.9rem;letter-spacing:-.02em}
+.balance-form{display:grid;gap:8px;margin-top:12px}
+.balance-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.balance-actions .secondary-button{min-height:46px;background:var(--surface)}
+.balance-actions .spend{color:var(--danger)}
+.history-list{list-style:none;margin:12px 0 0;padding:0;max-height:190px;overflow-y:auto;display:grid;gap:8px}
+.history-list li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:var(--surface)}
+.history-list strong,.history-list small{display:block}
+.history-list small{color:var(--muted);font-size:.72rem}
+.h-amount{font-weight:800;white-space:nowrap}
+.h-amount.neg{color:var(--danger)}
+.h-amount.pos{color:#1f8a52}
+.history-list .history-empty{justify-content:center;color:var(--muted)}
+.balance-box .text-button{margin-top:10px}
+.card-badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.card-balance{padding:3px 9px;border-radius:999px;background:#00000050;color:#fff;font-size:.78rem;font-weight:800}
