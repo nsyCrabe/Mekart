@@ -6,7 +6,7 @@ const CARDS_KEY = 'loyalty_cards_v1';
 const THEME_KEY = 'loyalty_theme_v2';
 const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
-const APP_VERSION = '4.1';
+const APP_VERSION = '4.2';
 
 const CATEGORIES = [
   { id: 'courses', name: 'Courses', emoji: '🛒' },
@@ -87,6 +87,16 @@ function el(tag, props = {}, ...children) {
 function logoNode(card) {
   if (card.logo) return el('img', { src: card.logo, alt: `Logo ${card.name}` });
   return document.createTextNode(initials(card.name));
+}
+const round2 = n => Math.round(n * 100) / 100;
+const fmtMoney = n => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
+const fmtDate = t => new Date(t).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+function parseAmount(str, allowZero = false) {
+  const txt = String(str || '').replace(/[€\s]/g, '').replace(',', '.');
+  if (!txt) return null;
+  const n = Number(txt);
+  if (!Number.isFinite(n) || n < 0 || n > 100000 || (!allowZero && n <= 0)) return null;
+  return round2(n);
 }
 function parseTags(str) {
   const seen = new Set();
@@ -184,6 +194,7 @@ function ensureOrder() {
 }
 function matchesFilter(c) {
   if (filter.kind === 'fav') return !!c.fav;
+  if (filter.kind === 'gift') return c.balance != null;
   if (filter.kind === 'cat') return c.category === filter.value;
   if (filter.kind === 'tag') return (c.tags || []).some(t => norm(t) === filter.value);
   return true;
@@ -215,6 +226,7 @@ function renderFilters() {
   };
   add('all', '', 'Toutes');
   if (cards.some(c => c.fav)) add('fav', '', '★ Favorites');
+  if (cards.some(c => c.balance != null)) add('gift', '', '💶 Avec solde');
   CATEGORIES.filter(cat => cards.some(c => c.category === cat.id)).forEach(cat => add('cat', cat.id, `${cat.emoji} ${cat.name}`));
   const tags = new Map();
   cards.forEach(c => (c.tags || []).forEach(t => { const k = norm(t); if (!tags.has(k)) tags.set(k, t); }));
@@ -253,7 +265,7 @@ function render() {
     b.style.animationDelay = `${Math.min(i, 10) * 35}ms`;
     const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(c));
     b.append(
-      el('div', { class: 'card-top' }, logo, c.fav ? el('span', { class: 'card-fav', text: '★' }) : null),
+      el('div', { class: 'card-top' }, logo, (c.fav || c.balance != null) ? el('div', { class: 'card-badges' }, c.balance != null ? el('span', { class: 'card-balance', text: fmtMoney(c.balance) }) : null, c.fav ? el('span', { class: 'card-fav', text: '★' }) : null) : null),
       el('div', {}, el('p', { class: 'card-name', text: c.name }), el('p', { class: 'card-type', text: cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType) }))
     );
     b.addEventListener('click', () => { if (!reorderMode) openDetail(c.id); });
@@ -385,12 +397,31 @@ function showForm(id = null) {
   $('codeTypeInput').value = c?.codeType || 'barcode';
   $('notesInput').value = c?.notes || '';
   $('categoryInput').value = c?.category || '';
+  const isGift = !!c && c.balance != null;
+  $('giftToggle').checked = isGift;
+  $('balanceInput').value = isGift ? String(c.balance).replace('.', ',') : '';
+  toggleGiftFields();
   selectedColor = c?.color || COLORS[0];
   selectedLogo = c?.logo || null;
   scannedFormat = c?.format || null;
   updateLogoPreview();
   renderColors();
   toggleCodeFields();
+}
+function toggleGiftFields() { $('giftFields').hidden = !$('giftToggle').checked; }
+/* Met à jour le solde d'une carte et l'historique (création, correction manuelle, ou désactivation) */
+function applyBalance(card, next) {
+  if (next === null) { delete card.balance; delete card.history; return; }
+  if (card.balance == null) {
+    card.balance = next;
+    card.history = [{ t: Date.now(), d: next, a: next, n: 'Solde initial' }];
+    return;
+  }
+  if (Math.abs(card.balance - next) >= 0.005) {
+    const d = round2(next - card.balance);
+    card.balance = next;
+    card.history = [...(card.history || []), { t: Date.now(), d, a: next, n: 'Correction du solde' }].slice(-100);
+  }
 }
 function toggleCodeFields() { $('codeFields').hidden = $('codeTypeInput').value === 'none'; }
 
@@ -444,10 +475,17 @@ function saveCard(e) {
   const codeType = $('codeTypeInput').value;
   const code = codeType === 'none' ? '' : $('codeInput').value.trim();
   if (codeType !== 'none' && !code) return toast('Ajoute le numéro, ou choisis « Aucun code ».');
+  let giftBalance = null;
+  if ($('giftToggle').checked) {
+    giftBalance = parseAmount($('balanceInput').value, true);
+    if (giftBalance === null) return toast('Indique le solde de la carte (ex. 25,00).');
+  }
   const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), format: scannedFormat || null, category: $('categoryInput').value };
   const backup = JSON.stringify(cards);
-  if (editingId) Object.assign(cards.find(c => c.id === editingId), data);
-  else cards.push({ id: uid(), ...data, createdAt: Date.now(), fav: false, uses: 0, order: Math.max(-1, ...cards.map(c => (typeof c.order === 'number' ? c.order : -1))) + 1 });
+  let target;
+  if (editingId) { target = cards.find(c => c.id === editingId); Object.assign(target, data); }
+  else { target = { id: uid(), ...data, createdAt: Date.now(), fav: false, uses: 0, order: Math.max(-1, ...cards.map(c => (typeof c.order === 'number' ? c.order : -1))) + 1 }; cards.push(target); }
+  applyBalance(target, giftBalance);
   if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : choisis un logo plus léger.'); }
   render();
   closeLayer();
@@ -489,6 +527,7 @@ function openDetail(id) {
   $('copyCode').hidden = !c.code;
   syncFavButton(c);
   renderDetailMeta(c);
+  renderBalance(c);
 
   const box = $('codeBox');
   const svg = $('barcodeSvg'), qr = $('qrHolder');
@@ -516,6 +555,50 @@ function renderDetailMeta(c) {
   if (cat) box.append(el('span', { class: 'tag cat', text: `${cat.emoji} ${cat.name}` }));
   (c.tags || []).forEach(t => box.append(el('span', { class: 'tag', text: `#${t}` })));
   box.hidden = !box.children.length;
+}
+function renderBalance(c) {
+  const box = $('balanceBox');
+  box.hidden = c.balance == null;
+  if (c.balance == null) return;
+  $('balanceValue').textContent = fmtMoney(c.balance);
+  $('amountInput').value = '';
+  $('amountNote').value = '';
+  $('historyList').hidden = true;
+  const list = $('historyList');
+  list.replaceChildren();
+  const items = [...(c.history || [])].reverse();
+  if (!items.length) list.append(el('li', { class: 'history-empty', text: 'Aucune opération.' }));
+  items.forEach(h => list.append(el('li', {},
+    el('span', {}, el('strong', { text: h.n || (h.d < 0 ? 'Dépense' : 'Recharge') }), el('small', { text: fmtDate(h.t) })),
+    el('span', { class: `h-amount ${h.d < 0 ? 'neg' : 'pos'}`, text: `${h.d < 0 ? '−' : '+'}${fmtMoney(Math.abs(h.d))}` }))));
+  $('undoLast').hidden = (c.history || []).length < 2;
+}
+function balanceOp(sign) {
+  const c = cards.find(x => x.id === openedId);
+  if (!c || c.balance == null) return;
+  const amount = parseAmount($('amountInput').value);
+  if (amount === null) return toast('Entre un montant valide (ex. 12,50).');
+  if (sign < 0 && amount > c.balance + 0.004) return toast('Le montant dépasse le solde restant.');
+  const before = { balance: c.balance, history: c.history };
+  const d = round2(sign * amount);
+  c.balance = round2(c.balance + d);
+  c.history = [...(c.history || []), { t: Date.now(), d, a: c.balance, n: $('amountNote').value.trim().slice(0, 40) || (sign < 0 ? 'Dépense' : 'Recharge') }].slice(-100);
+  if (!save()) { Object.assign(c, before); return toast('Stockage plein : impossible d\'enregistrer.'); }
+  vibrate(20);
+  renderBalance(c);
+  $('historyList').hidden = false;
+  toast(sign < 0 ? `${fmtMoney(amount)} déduits ✓` : `${fmtMoney(amount)} ajoutés ✓`);
+}
+function undoLastOp() {
+  const c = cards.find(x => x.id === openedId);
+  if (!c || c.balance == null || (c.history || []).length < 2) return;
+  const last = c.history[c.history.length - 1];
+  c.history = c.history.slice(0, -1);
+  c.balance = round2(c.balance - last.d);
+  save();
+  renderBalance(c);
+  $('historyList').hidden = false;
+  toast('Dernière opération annulée');
 }
 function cleanupDetail() {
   openedId = null;
@@ -668,7 +751,7 @@ async function importCards(file) {
     if (!Array.isArray(list)) throw new Error('format');
     const known = new Set(cards.map(c => c.id));
     const added = list.filter(c => c && typeof c.name === 'string' && c.name && !known.has(c.id))
-      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [] }));
+      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined }));
     const backup = JSON.stringify(cards);
     cards.push(...added);
     ensureOrder();
@@ -702,6 +785,11 @@ $('cardsGrid').addEventListener('contextmenu', e => { if (reorderMode) e.prevent
 $('imageButton').addEventListener('click', () => $('imageInput').click());
 $('imageInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await readCodeFromImage(f); e.target.value = ''; });
 $('forceUpdateButton').addEventListener('click', forceUpdate);
+$('giftToggle').addEventListener('change', toggleGiftFields);
+$('spendButton').addEventListener('click', () => balanceOp(-1));
+$('topupButton').addEventListener('click', () => balanceOp(1));
+$('toggleHistory').addEventListener('click', () => { $('historyList').hidden = !$('historyList').hidden; });
+$('undoLast').addEventListener('click', undoLastOp);
 
 $('hideGuide').addEventListener('click', () => { $('quickGuide').hidden = true; localStorage.setItem(GUIDE_KEY, '1'); });
 $('showGuideButton').addEventListener('click', () => { localStorage.removeItem(GUIDE_KEY); render(); closeLayer(); });
