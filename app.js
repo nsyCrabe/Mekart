@@ -6,7 +6,8 @@ const CARDS_KEY = 'loyalty_cards_v1';
 const THEME_KEY = 'loyalty_theme_v2';
 const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
-const APP_VERSION = '4.2';
+const TAB_KEY = 'loyalty_tab_v1';
+const APP_VERSION = '4.3';
 
 const CATEGORIES = [
   { id: 'courses', name: 'Courses', emoji: '🛒' },
@@ -50,6 +51,8 @@ let selectedColor = COLORS[0];
 let selectedLogo = null;
 let filter = { kind: 'all', value: '' };   // all | fav | cat | tag
 let reorderMode = false;
+let tab = 'loyalty';        // onglet affiché : loyalty | gift
+let formKind = 'loyalty';   // type de carte dans le formulaire
 let sortMode = 'recent';
 let themePref = 'auto';
 let stream = null;
@@ -88,6 +91,8 @@ function logoNode(card) {
   if (card.logo) return el('img', { src: card.logo, alt: `Logo ${card.name}` });
   return document.createTextNode(initials(card.name));
 }
+/* Une carte est « cadeau » si elle a un solde ; les anciennes cartes sont classées automatiquement */
+const kindOf = c => (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (c.balance != null ? 'gift' : 'loyalty');
 const round2 = n => Math.round(n * 100) / 100;
 const fmtMoney = n => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
 const fmtDate = t => new Date(t).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -127,6 +132,8 @@ function load() {
     const raw = JSON.parse(localStorage.getItem(CARDS_KEY) || '[]');
     cards = Array.isArray(raw) ? raw.filter(c => c && c.id && c.name) : [];
   } catch { cards = []; }
+  cards.forEach(c => { c.kind = kindOf(c); });
+  tab = localStorage.getItem(TAB_KEY) === 'gift' ? 'gift' : 'loyalty';
   themePref = localStorage.getItem(THEME_KEY) || 'auto';
   sortMode = localStorage.getItem(SORT_KEY) || 'recent';
   if (!['recent', 'used', 'az', 'manual'].includes(sortMode)) sortMode = 'recent';
@@ -192,19 +199,19 @@ function ensureOrder() {
     .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
     .forEach(c => { c.order = next++; });
 }
+const tabCards = () => cards.filter(c => kindOf(c) === tab);
+const isSpent = c => c.balance != null && c.balance <= 0.004;
 function matchesFilter(c) {
   if (filter.kind === 'fav') return !!c.fav;
-  if (filter.kind === 'gift') return c.balance != null;
   if (filter.kind === 'cat') return c.category === filter.value;
   if (filter.kind === 'tag') return (c.tags || []).some(t => norm(t) === filter.value);
   return true;
 }
+const searchMatch = (c, q) => norm(c.name).includes(q) || norm(c.notes).includes(q)
+  || (c.tags || []).some(t => norm(t).includes(q)) || norm(catById(c.category)?.name).includes(q);
 function sortedFiltered() {
   const q = norm($('searchInput').value.trim());
-  const list = cards.filter(c => matchesFilter(c) && (!q
-    || norm(c.name).includes(q) || norm(c.notes).includes(q)
-    || (c.tags || []).some(t => norm(t).includes(q))
-    || norm(catById(c.category)?.name).includes(q)));
+  const list = tabCards().filter(c => matchesFilter(c) && (!q || searchMatch(c, q)));
   const byMode = {
     recent: (a, b) => (b.lastUsed || b.createdAt || 0) - (a.lastUsed || a.createdAt || 0),
     used: (a, b) => (b.uses || 0) - (a.uses || 0),
@@ -212,10 +219,14 @@ function sortedFiltered() {
     manual: (a, b) => (a.order ?? 1e9) - (b.order ?? 1e9)
   };
   const cmp = byMode[sortMode] || byMode.recent;
-  list.sort((a, b) => (sortMode === 'manual' ? 0 : (b.fav ? 1 : 0) - (a.fav ? 1 : 0)) || cmp(a, b));
+  const auto = sortMode !== 'manual';
+  list.sort((a, b) =>
+    (auto && tab === 'gift' ? (isSpent(a) ? 1 : 0) - (isSpent(b) ? 1 : 0) : 0)   // cartes épuisées en bas
+    || (auto ? (b.fav ? 1 : 0) - (a.fav ? 1 : 0) : 0)
+    || cmp(a, b));
   return list;
 }
-function renderFilters() {
+function renderFilters(pool) {
   const row = $('filterRow');
   row.replaceChildren();
   const add = (kind, value, label) => {
@@ -225,26 +236,77 @@ function renderFilters() {
     row.append(b);
   };
   add('all', '', 'Toutes');
-  if (cards.some(c => c.fav)) add('fav', '', '★ Favorites');
-  if (cards.some(c => c.balance != null)) add('gift', '', '💶 Avec solde');
-  CATEGORIES.filter(cat => cards.some(c => c.category === cat.id)).forEach(cat => add('cat', cat.id, `${cat.emoji} ${cat.name}`));
+  if (pool.some(c => c.fav)) add('fav', '', '★ Favorites');
+  CATEGORIES.filter(cat => pool.some(c => c.category === cat.id)).forEach(cat => add('cat', cat.id, `${cat.emoji} ${cat.name}`));
   const tags = new Map();
-  cards.forEach(c => (c.tags || []).forEach(t => { const k = norm(t); if (!tags.has(k)) tags.set(k, t); }));
+  pool.forEach(c => (c.tags || []).forEach(t => { const k = norm(t); if (!tags.has(k)) tags.set(k, t); }));
   [...tags].sort((a, b) => a[1].localeCompare(b[1], 'fr')).forEach(([k, t]) => add('tag', k, `#${t}`));
   row.hidden = row.children.length < 2;
+}
+function setTab(t) {
+  if (tab === t) return;
+  tab = t;
+  localStorage.setItem(TAB_KEY, t);
+  filter = { kind: 'all', value: '' };
+  reorderMode = false;
+  render();
+  window.scrollTo({ top: 0 });
 }
 function render() {
   const grid = $('cardsGrid');
   grid.replaceChildren();
+  const giftN = cards.filter(c => kindOf(c) === 'gift').length;
+  $('countGift').textContent = giftN;
+  $('countLoyalty').textContent = cards.length - giftN;
+  ['Loyalty', 'Gift'].forEach(k => {
+    const on = (k === 'Gift') === (tab === 'gift');
+    $('tab' + k).classList.toggle('active', on);
+    $('tab' + k).setAttribute('aria-selected', on ? 'true' : 'false');
+  });
   $('cardCount').textContent = `${cards.length} carte${cards.length > 1 ? 's' : ''}`;
-  const none = cards.length === 0;
+  $('addButton').textContent = tab === 'gift' ? '+ Ajouter une carte cadeau' : '+ Ajouter une carte';
+
+  const pool = tabCards();
+  const none = pool.length === 0;
   $('emptyState').hidden = !none;
   $('toolbar').hidden = none;
-  $('quickGuide').hidden = none ? true : localStorage.getItem(GUIDE_KEY) === '1';
-  if (none) { reorderMode = false; $('reorderBar').hidden = true; return; }
+  $('quickGuide').hidden = none || tab !== 'loyalty' ? true : localStorage.getItem(GUIDE_KEY) === '1';
+  if (none) {
+    $('emptyTitle').textContent = tab === 'gift' ? 'Aucune carte cadeau' : 'Aucune carte de fidélité';
+    $('emptyText').textContent = tab === 'gift'
+      ? "Ajoute une carte cadeau pour suivre ton solde et l'historique de tes dépenses."
+      : 'Ajoute ta première carte de fidélité pour la retrouver en caisse, même sans réseau.';
+    $('emptyAddButton').textContent = tab === 'gift' ? 'Ajouter une carte cadeau' : 'Ajouter une carte';
+    reorderMode = false;
+    $('reorderBar').hidden = true;
+  }
 
-  if (filter.kind !== 'all' && !cards.some(matchesFilter)) filter = { kind: 'all', value: '' };
-  renderFilters();
+  // Total des cartes cadeaux
+  const gt = $('giftTotal');
+  gt.hidden = !(tab === 'gift' && !none);
+  if (!gt.hidden) {
+    const active = pool.filter(c => !isSpent(c)).length;
+    $('giftTotalLabel').textContent = `Total restant · ${active} carte${active > 1 ? 's' : ''} avec du solde`;
+    $('giftTotalValue').textContent = fmtMoney(round2(pool.reduce((sum, c) => sum + (c.balance || 0), 0)));
+  }
+
+  // Résultats de recherche dans l'autre onglet
+  const hint = $('otherHint');
+  hint.hidden = true;
+  const q = norm($('searchInput').value.trim());
+  if (q) {
+    const other = tab === 'gift' ? 'loyalty' : 'gift';
+    const n = cards.filter(c => kindOf(c) === other && searchMatch(c, q)).length;
+    if (n) {
+      hint.hidden = false;
+      hint.textContent = `${n} résultat${n > 1 ? 's' : ''} dans ${other === 'gift' ? 'Cartes cadeaux' : 'Cartes de fidélité'} →`;
+      hint.onclick = () => setTab(other);
+    }
+  }
+  if (none) return;
+
+  if (filter.kind !== 'all' && !pool.some(matchesFilter)) filter = { kind: 'all', value: '' };
+  renderFilters(pool);
   $('reorderBar').hidden = !reorderMode;
   $('reorderButton').classList.toggle('active', reorderMode);
   grid.classList.toggle('reordering', reorderMode);
@@ -257,16 +319,18 @@ function render() {
   list.forEach((c, i) => {
     const color = c.color || COLORS[0];
     const cat = catById(c.category);
-    const b = el('button', { type: 'button', class: 'loyalty-card', 'aria-label': `Ouvrir la carte ${c.name}` });
+    const spent = isSpent(c);
+    const b = el('button', { type: 'button', class: `loyalty-card${spent ? ' empty' : ''}`, 'aria-label': `Ouvrir la carte ${c.name}` });
     b.dataset.id = c.id;
     b.style.setProperty('--card-color', color);
     b.style.setProperty('--card-color-dark', darken(color));
     b.style.setProperty('--card-fg', isLight(color) ? '#14181f' : '#fff');
     b.style.animationDelay = `${Math.min(i, 10) * 35}ms`;
     const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(c));
+    const typeText = spent ? 'Épuisée' : (cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType));
     b.append(
       el('div', { class: 'card-top' }, logo, (c.fav || c.balance != null) ? el('div', { class: 'card-badges' }, c.balance != null ? el('span', { class: 'card-balance', text: fmtMoney(c.balance) }) : null, c.fav ? el('span', { class: 'card-fav', text: '★' }) : null) : null),
-      el('div', {}, el('p', { class: 'card-name', text: c.name }), el('p', { class: 'card-type', text: cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType) }))
+      el('div', {}, el('p', { class: 'card-name', text: c.name }), el('p', { class: 'card-type', text: typeText }))
     );
     b.addEventListener('click', () => { if (!reorderMode) openDetail(c.id); });
     grid.append(b);
@@ -397,10 +461,8 @@ function showForm(id = null) {
   $('codeTypeInput').value = c?.codeType || 'barcode';
   $('notesInput').value = c?.notes || '';
   $('categoryInput').value = c?.category || '';
-  const isGift = !!c && c.balance != null;
-  $('giftToggle').checked = isGift;
-  $('balanceInput').value = isGift ? String(c.balance).replace('.', ',') : '';
-  toggleGiftFields();
+  $('balanceInput').value = c && c.balance != null ? String(c.balance).replace('.', ',') : '';
+  setFormKind(c ? kindOf(c) : tab);
   selectedColor = c?.color || COLORS[0];
   selectedLogo = c?.logo || null;
   scannedFormat = c?.format || null;
@@ -408,7 +470,12 @@ function showForm(id = null) {
   renderColors();
   toggleCodeFields();
 }
-function toggleGiftFields() { $('giftFields').hidden = !$('giftToggle').checked; }
+function setFormKind(k) {
+  formKind = k;
+  document.querySelectorAll('#kindSwitch .seg').forEach(b => b.classList.toggle('active', b.dataset.kind === k));
+  $('giftFields').hidden = k !== 'gift';
+  $('formTitle').textContent = editingId ? 'Modifier la carte' : (k === 'gift' ? 'Nouvelle carte cadeau' : 'Nouvelle carte');
+}
 /* Met à jour le solde d'une carte et l'historique (création, correction manuelle, ou désactivation) */
 function applyBalance(card, next) {
   if (next === null) { delete card.balance; delete card.history; return; }
@@ -476,16 +543,21 @@ function saveCard(e) {
   const code = codeType === 'none' ? '' : $('codeInput').value.trim();
   if (codeType !== 'none' && !code) return toast('Ajoute le numéro, ou choisis « Aucun code ».');
   let giftBalance = null;
-  if ($('giftToggle').checked) {
+  if (formKind === 'gift') {
     giftBalance = parseAmount($('balanceInput').value, true);
     if (giftBalance === null) return toast('Indique le solde de la carte (ex. 25,00).');
   }
-  const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), format: scannedFormat || null, category: $('categoryInput').value };
+  if (editingId && formKind === 'loyalty') {
+    const old = cards.find(c => c.id === editingId);
+    if (old && old.balance != null && (old.history || []).length > 1 && !confirm("Passer en carte de fidélité supprime le solde et l'historique. Continuer ?")) return;
+  }
+  const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), kind: formKind, format: scannedFormat || null, category: $('categoryInput').value };
   const backup = JSON.stringify(cards);
   let target;
   if (editingId) { target = cards.find(c => c.id === editingId); Object.assign(target, data); }
   else { target = { id: uid(), ...data, createdAt: Date.now(), fav: false, uses: 0, order: Math.max(-1, ...cards.map(c => (typeof c.order === 'number' ? c.order : -1))) + 1 }; cards.push(target); }
   applyBalance(target, giftBalance);
+  if (formKind !== tab) { tab = formKind; localStorage.setItem(TAB_KEY, tab); filter = { kind: 'all', value: '' }; reorderMode = false; }
   if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : choisis un logo plus léger.'); }
   render();
   closeLayer();
@@ -751,7 +823,7 @@ async function importCards(file) {
     if (!Array.isArray(list)) throw new Error('format');
     const known = new Set(cards.map(c => c.id));
     const added = list.filter(c => c && typeof c.name === 'string' && c.name && !known.has(c.id))
-      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined }));
+      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: Number.isFinite(c.balance) ? 'gift' : 'loyalty' }));
     const backup = JSON.stringify(cards);
     cards.push(...added);
     ensureOrder();
@@ -785,7 +857,9 @@ $('cardsGrid').addEventListener('contextmenu', e => { if (reorderMode) e.prevent
 $('imageButton').addEventListener('click', () => $('imageInput').click());
 $('imageInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await readCodeFromImage(f); e.target.value = ''; });
 $('forceUpdateButton').addEventListener('click', forceUpdate);
-$('giftToggle').addEventListener('change', toggleGiftFields);
+$('kindSwitch').addEventListener('click', e => { const b = e.target.closest('.seg'); if (b) setFormKind(b.dataset.kind); });
+$('tabLoyalty').addEventListener('click', () => setTab('loyalty'));
+$('tabGift').addEventListener('click', () => setTab('gift'));
 $('spendButton').addEventListener('click', () => balanceOp(-1));
 $('topupButton').addEventListener('click', () => balanceOp(1));
 $('toggleHistory').addEventListener('click', () => { $('historyList').hidden = !$('historyList').hidden; });
