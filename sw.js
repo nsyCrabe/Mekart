@@ -1,6 +1,6 @@
 /* ===== Mes cartes — service worker v3 =====
    Change VERSION à chaque publication pour forcer la mise à jour du cache. */
-const VERSION = 'v3';
+const VERSION = 'v5';
 const CACHE = `mes-cartes-${VERSION}`;
 
 const CORE = ['./', 'index.html', 'style.css', 'app.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
@@ -13,7 +13,7 @@ self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     // Un fichier manquant ne doit pas bloquer l'installation
-    await Promise.all([...CORE, ...CDN].map(url => cache.add(url).catch(() => {})));
+    await Promise.all([...CORE, ...CDN].map(url => cache.add(new Request(url, { cache: 'reload' })).catch(() => {})));
     await self.skipWaiting();
   })());
 });
@@ -42,7 +42,7 @@ self.addEventListener('fetch', event => {
     if (isCdn && cached) return cached;
 
     // Fichiers de l'app : on sert le cache tout de suite, et on met à jour en arrière-plan
-    const network = fetch(req).then(res => {
+    const network = fetch(req, sameOrigin ? { cache: 'no-cache' } : undefined).then(res => {
       if (res && res.ok) cache.put(req, res.clone());
       return res;
     }).catch(() => null);
