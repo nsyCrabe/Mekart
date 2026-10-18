@@ -209,6 +209,18 @@
   <p class="detail-type" id="detailType"></p>
   <div class="detail-meta" id="detailMeta" hidden></div>
 
+  <div class="cagnotte-box" id="cagnotteBox" hidden>
+    <div class="cagnotte-view" id="cagnotteView">
+      <div><small>Cagnotte</small><strong id="cagnotteValue">0,00 €</strong></div>
+      <button class="tool-button" id="cagnotteEdit" type="button" aria-label="Modifier la cagnotte">✏️</button>
+    </div>
+    <div class="cagnotte-editor" id="cagnotteEditor" hidden>
+      <input class="form-input" id="cagnotteInput" inputmode="decimal" placeholder="Nouveau montant (€)" aria-label="Nouveau montant de la cagnotte">
+      <button class="tool-button ok" id="cagnotteSave" type="button" aria-label="Valider">✓</button>
+      <button class="tool-button" id="cagnotteCancel" type="button" aria-label="Annuler">✕</button>
+    </div>
+  </div>
+
   <div class="balance-box" id="balanceBox" hidden>
     <div class="balance-top">
       <div><small id="balanceCaption">Solde restant</small><strong id="balanceValue">0,00 €</strong></div>
