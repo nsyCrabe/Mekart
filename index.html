@@ -37,10 +37,6 @@
     <button class="tab" id="tabGift" role="tab" aria-selected="false" type="button">Cartes cadeaux <span id="countGift">0</span></button>
   </div>
   <button class="other-hint" id="otherHint" type="button" hidden></button>
-  <div class="gift-total" id="giftTotal" hidden>
-    <small id="giftTotalLabel">Total restant</small>
-    <strong id="giftTotalValue">0,00 €</strong>
-  </div>
 
   <div class="toolbar" id="toolbar">
     <div class="filter-row" id="filterRow" aria-label="Filtres"></div>
@@ -115,6 +111,15 @@
     <div id="giftFields" hidden>
       <label class="form-label" for="balanceInput" id="balanceLabel">Solde actuel (€)</label>
       <input class="form-input" id="balanceInput" inputmode="decimal" placeholder="Ex. 25,00">
+      <div id="cagnotteCodeWrap">
+        <label class="form-label" for="cagnotteCodeInput">Code cagnotte (facultatif)</label>
+        <div class="code-row">
+          <input class="form-input masked" id="cagnotteCodeInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Saisis le code">
+          <button class="scan-button" id="cagnotteCodeEye" type="button" aria-label="Afficher ou masquer la saisie">👁</button>
+        </div>
+        <button class="text-button danger" id="removeCagnotteCode" type="button" hidden>Retirer le code enregistré</button>
+        <p class="field-hint">Chiffré sur ton téléphone, visible seulement avec ton empreinte.</p>
+      </div>
     </div>
 
     <label class="form-label" for="codeTypeInput">Type de code</label>
@@ -183,6 +188,14 @@
       <span class="menu-icon" aria-hidden="true">🔄</span>
       <span><strong>Forcer la mise à jour</strong><small>Recharge la dernière version, sans toucher à tes cartes</small></span>
     </button>
+    <button class="menu-item" id="fingerprintButton" type="button" hidden>
+      <span class="menu-icon" aria-hidden="true">🔐</span>
+      <span><strong>Réactiver l'empreinte</strong><small>Refait l'enregistrement pour voir les codes cagnotte</small></span>
+    </button>
+    <button class="menu-item" id="resetVaultButton" type="button" hidden>
+      <span class="menu-icon" aria-hidden="true">🧹</span>
+      <span><strong>Réinitialiser la protection</strong><small>Supprime tous les codes cagnotte enregistrés</small></span>
+    </button>
     <button class="menu-item" id="showGuideButton" type="button">
       <span class="menu-icon" aria-hidden="true">💡</span>
       <span><strong>Réafficher l'aide</strong><small>Le bandeau de démarrage</small></span>
@@ -213,6 +226,11 @@
     <div class="cagnotte-view" id="cagnotteView">
       <div><small>Cagnotte</small><strong id="cagnotteValue">0,00 €</strong></div>
       <button class="tool-button" id="cagnotteEdit" type="button" aria-label="Modifier la cagnotte">✏️</button>
+    </div>
+    <div class="cagnotte-code" id="cagnotteCodeRow" hidden>
+      <div class="code-info"><span class="code-label">Code cagnotte</span><strong id="cagnotteCodeText">••••••</strong></div>
+      <button class="tool-button" id="cagnotteCodeShow" type="button" aria-label="Afficher le code">👁</button>
+      <button class="tool-button" id="cagnotteCodeCopy" type="button" aria-label="Copier le code">📋</button>
     </div>
     <div class="cagnotte-editor" id="cagnotteEditor" hidden>
       <input class="form-input" id="cagnotteInput" inputmode="decimal" placeholder="Nouveau montant (€)" aria-label="Nouveau montant de la cagnotte">
@@ -260,6 +278,22 @@
     <div class="scan-frame"></div>
   </div>
   <p>Place le code dans le cadre.</p>
+</section>
+
+<!-- Dialogue (protection des codes) -->
+<div class="backdrop" id="dialogBackdrop" hidden></div>
+<section class="sheet dialog" id="dialogSheet" hidden aria-label="Dialogue">
+  <div class="handle"></div>
+  <h2 id="dialogTitle"></h2>
+  <p class="dialog-text" id="dialogText"></p>
+  <div class="recovery-code" id="dialogCode" hidden></div>
+  <button class="text-button" id="dialogCopy" type="button" hidden>Copier le code</button>
+  <label class="check-row" id="dialogCheckRow" hidden><input type="checkbox" id="dialogCheck"> <span id="dialogCheckLabel"></span></label>
+  <input class="form-input" id="dialogInput" autocomplete="off" autocapitalize="characters" spellcheck="false" hidden>
+  <div class="form-actions">
+    <button class="secondary-button" id="dialogCancel" type="button">Annuler</button>
+    <button class="primary-button" id="dialogOk" type="button">OK</button>
+  </div>
 </section>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
