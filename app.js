@@ -7,7 +7,8 @@ const THEME_KEY = 'loyalty_theme_v2';
 const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
-const APP_VERSION = '4.5';
+const VAULT_KEY = 'loyalty_vault_v1';
+const APP_VERSION = '4.6';
 
 const CATEGORIES = [
   { id: 'courses', name: 'Courses', emoji: '🛒' },
@@ -53,6 +54,8 @@ let filter = { kind: 'all', value: '' };   // all | fav | cat | tag
 let reorderMode = false;
 let tab = 'loyalty';        // onglet affiché : loyalty | gift
 let formKind = 'loyalty';   // type de carte dans le formulaire
+let removeCode = false;     // « Retirer le code enregistré » demandé dans le formulaire
+let dialogDone = null;      // résout la fenêtre de dialogue si on la ferme avec le bouton Retour
 let sortMode = 'recent';
 let themePref = 'auto';
 let stream = null;
@@ -286,21 +289,6 @@ function render() {
     $('reorderBar').hidden = true;
   }
 
-  // Bandeau du haut : solde des cartes cadeaux, ou cagnottes des cartes de fidélité
-  const gt = $('giftTotal');
-  const withBalance = pool.filter(c => c.balance != null);
-  gt.hidden = none || !withBalance.length;
-  if (!gt.hidden) {
-    const n = withBalance.length;
-    if (tab === 'gift') {
-      const active = withBalance.filter(c => !isSpent(c)).length;
-      $('giftTotalLabel').textContent = `Total restant · ${active} carte${active > 1 ? 's' : ''} avec du solde`;
-    } else {
-      $('giftTotalLabel').textContent = `Cagnottes disponibles · ${n} carte${n > 1 ? 's' : ''}`;
-    }
-    $('giftTotalValue').textContent = fmtMoney(round2(withBalance.reduce((t, c) => t + c.balance, 0)));
-  }
-
   // Résultats de recherche dans l'autre onglet
   const hint = $('otherHint');
   hint.hidden = true;
@@ -430,6 +418,7 @@ const LAYERS = {
   theme: ['themeSheet', 'themeBackdrop'],
   menu: ['menuSheet', 'menuBackdrop'],
   detail: ['detailPanel', 'detailBackdrop'],
+  dialog: ['dialogSheet', 'dialogBackdrop'],
   scanner: ['scanner', null]
 };
 const stack = [];
@@ -447,7 +436,8 @@ function hideLayer(name) {
   const [panel, backdrop] = LAYERS[name];
   $(panel).hidden = true;
   if (backdrop) $(backdrop).hidden = true;
-  if (name === 'form') editingId = null;
+  if (name === 'form') { editingId = null; $('cagnotteCodeInput').value = ''; }
+  if (name === 'dialog' && dialogDone) { const f = dialogDone; dialogDone = null; f(); }
   if (name === 'detail') cleanupDetail();
   if (name === 'scanner') stopScan();
   if (!stack.length) document.body.classList.remove('no-scroll');
@@ -461,6 +451,14 @@ window.addEventListener('popstate', () => {
   if (name) hideLayer(name);
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLayer(); });
+/* Ferme la couche du dessus et attend que le navigateur ait fini (évite les courses entre deux fenêtres qui s'enchaînent) */
+function closeLayerAsync() {
+  return new Promise(res => {
+    if (stack.length - pendingBack <= 0) return res();
+    window.addEventListener('popstate', () => res(), { once: true });
+    closeLayer();
+  });
+}
 
 /* ---------- Formulaire ---------- */
 function showForm(id = null) {
@@ -474,6 +472,10 @@ function showForm(id = null) {
   $('categoryInput').value = c?.category || '';
   $('balanceInput').value = c && c.balance != null ? String(c.balance).replace('.', ',') : '';
   $('cagnotteToggle').checked = !!c && kindOf(c) === 'loyalty' && c.balance != null;
+  $('cagnotteCodeInput').value = '';
+  $('cagnotteCodeInput').placeholder = c && c.cagnotteCode ? 'Code enregistré · laisse vide pour le garder' : 'Saisis le code';
+  $('removeCagnotteCode').hidden = !(c && c.cagnotteCode);
+  removeCode = false;
   setFormKind(c ? kindOf(c) : tab);
   selectedColor = c?.color || COLORS[0];
   selectedLogo = c?.logo || null;
@@ -485,6 +487,7 @@ function showForm(id = null) {
 function updateBalanceFields() {
   const show = formKind === 'gift' || (formKind === 'loyalty' && $('cagnotteToggle').checked);
   $('giftFields').hidden = !show;
+  $('cagnotteCodeWrap').hidden = formKind !== 'loyalty';
   $('balanceLabel').textContent = formKind === 'gift' ? 'Solde actuel (€)' : 'Cagnotte actuelle (€)';
 }
 function setFormKind(k) {
@@ -554,7 +557,7 @@ function resizeLogo(file) {
     reader.readAsDataURL(file);
   });
 }
-function saveCard(e) {
+async function saveCard(e) {
   e.preventDefault();
   const name = $('nameInput').value.trim();
   if (!name) return toast('Ajoute le nom du magasin.');
@@ -570,12 +573,22 @@ function saveCard(e) {
     const old = cards.find(c => c.id === editingId);
     if (old && old.balance != null && (old.history || []).length > 1 && !confirm("Retirer le solde ou la cagnotte supprime aussi son historique. Continuer ?")) return;
   }
+  // Code cagnotte : chiffré avant d'être enregistré (undefined = inchangé, null = supprimé)
+  let newCode;
+  const wantsCag = formKind === 'loyalty' && $('cagnotteToggle').checked;
+  const typedCode = $('cagnotteCodeInput').value.trim();
+  if (!wantsCag || removeCode) newCode = null;
+  else if (typedCode) {
+    newCode = await encryptCode(typedCode);
+    if (!newCode) return toast('Code cagnotte non enregistré.');
+  }
   const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), kind: formKind, format: scannedFormat || null, category: $('categoryInput').value };
   const backup = JSON.stringify(cards);
   let target;
   if (editingId) { target = cards.find(c => c.id === editingId); Object.assign(target, data); }
   else { target = { id: uid(), ...data, createdAt: Date.now(), fav: false, uses: 0, order: Math.max(-1, ...cards.map(c => (typeof c.order === 'number' ? c.order : -1))) + 1 }; cards.push(target); }
   applyBalance(target, giftBalance);
+  if (newCode === null) delete target.cagnotteCode; else if (newCode) target.cagnotteCode = newCode;
   if (formKind !== tab) { tab = formKind; localStorage.setItem(TAB_KEY, tab); filter = { kind: 'all', value: '' }; reorderMode = false; }
   if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : choisis un logo plus léger.'); }
   render();
@@ -651,7 +664,7 @@ function renderBalance(c) {
   const box = $('balanceBox');
   const isCag = c.balance != null && kindOf(c) === 'loyalty';
   $('cagnotteBox').hidden = !isCag;
-  if (isCag) { $('cagnotteValue').textContent = fmtMoney(c.balance); closeCagnotteEditor(); }
+  if (isCag) { $('cagnotteValue').textContent = fmtMoney(c.balance); closeCagnotteEditor(); refreshCodeRow(c); }
   box.hidden = c.balance == null || isCag;
   if (c.balance == null || isCag) return;
   const L = opLabels(c);
@@ -725,6 +738,7 @@ function undoLastOp() {
 }
 function cleanupDetail() {
   openedId = null;
+  maskCode();
   $('codeBox').classList.remove('big');
   releaseAwake();
   render(); // met à jour l'ordre (récentes / utilisées)
@@ -857,10 +871,239 @@ function setupServiceWorker() {
   }).catch(() => {});
 }
 
+/* ---------- Code cagnotte : chiffrement (empreinte + code de secours) ----------
+   Les codes sont chiffrés (AES-GCM) avec une clé maître aléatoire. Cette clé est elle-même protégée de deux façons :
+   1) par ton empreinte (passkey + extension PRF de WebAuthn) ; 2) par un code de secours généré par l'app.
+   Rien n'est envoyé sur internet. La clé reste en mémoire 2 minutes maximum. */
+const enc8 = new TextEncoder(), dec8 = new TextDecoder();
+const randBytes = n => crypto.getRandomValues(new Uint8Array(n));
+const b64u = buf => { let t = ''; new Uint8Array(buf).forEach(x => { t += String.fromCharCode(x); }); return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64u = str => { const s = str.replace(/-/g, '+').replace(/_/g, '/'); const bin = atob(s + '='.repeat((4 - s.length % 4) % 4)); return Uint8Array.from(bin, ch => ch.charCodeAt(0)); };
+function loadVault() { try { return JSON.parse(localStorage.getItem(VAULT_KEY) || 'null'); } catch { return null; } }
+function saveVault(v) { localStorage.setItem(VAULT_KEY, JSON.stringify(v)); }
+function publicVault() { const v = loadVault(); return v && v.recSalt && v.wrapRec ? { v: 1, recSalt: v.recSalt, wrapRec: v.wrapRec } : null; }
+
+let vaultKey = null, vaultRaw = null, vaultTimer = null;
+function lockVault() { if (vaultRaw) vaultRaw.fill(0); vaultRaw = null; vaultKey = null; clearTimeout(vaultTimer); vaultTimer = null; }
+function touchVault() { clearTimeout(vaultTimer); vaultTimer = setTimeout(lockVault, 120000); }
+
+const RECOVERY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // 32 symboles, sans caractères ambigus
+function makeRecoveryCode() {
+  const chars = [...randBytes(20)].map(x => RECOVERY_ALPHABET[x & 31]);
+  return [0, 5, 10, 15].map(i => chars.slice(i, i + 5).join('')).join('-');
+}
+async function wrapKeyFromRecovery(code, salt) {
+  const clean = String(code).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const base = await crypto.subtle.importKey('raw', enc8.encode(clean), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 250000 }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function wrapKeyFromPrf(prfBytes) {
+  const base = await crypto.subtle.importKey('raw', prfBytes, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: enc8.encode('mes-cartes-wrap-v1') }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+const importMaster = raw => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+async function wrapBytes(key, bytes) {
+  const iv = randBytes(12);
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes);
+  return { iv: b64u(iv), ct: b64u(ct) };
+}
+async function unwrapBytes(key, w) {
+  return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64u(w.iv) }, key, unb64u(w.ct)));
+}
+
+/* Empreinte : passkey + extension PRF (fournit une clé secrète propre à ce téléphone) */
+async function getPrfOutput(credId, salt) {
+  const a = await navigator.credentials.get({ publicKey: {
+    challenge: randBytes(32), allowCredentials: [{ type: 'public-key', id: credId }],
+    userVerification: 'required', timeout: 60000,
+    extensions: { prf: { eval: { first: salt } } }
+  } });
+  const out = a.getClientExtensionResults().prf?.results?.first;
+  if (!out) throw new Error('prf-indisponible');
+  return new Uint8Array(out);
+}
+async function addFingerprint(vault, raw) {
+  if (!window.PublicKeyCredential) throw new Error('webauthn-indisponible');
+  const prfSalt = randBytes(32);
+  const cred = await navigator.credentials.create({ publicKey: {
+    rp: { name: 'Mes cartes' },
+    user: { id: randBytes(16), name: 'mes-cartes', displayName: 'Mes cartes' },
+    challenge: randBytes(32),
+    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+    authenticatorSelection: { authenticatorAttachment: 'platform', residentKey: 'required', userVerification: 'required' },
+    timeout: 60000,
+    extensions: { prf: { eval: { first: prfSalt } } }
+  } });
+  if (!cred) throw new Error('annulé');
+  const ext = cred.getClientExtensionResults();
+  if (ext.prf && ext.prf.enabled === false) throw new Error('prf-indisponible');
+  const first = ext.prf?.results?.first;
+  const prfBytes = first ? new Uint8Array(first) : await getPrfOutput(cred.rawId, prfSalt);
+  vault.credId = b64u(cred.rawId);
+  vault.prfSalt = b64u(prfSalt);
+  vault.wrapPrf = await wrapBytes(await wrapKeyFromPrf(prfBytes), raw);
+}
+
+/* Fenêtre de dialogue réutilisable (dans l'historique, donc le bouton Retour la ferme) */
+function askDialog(o) {
+  return new Promise(resolve => {
+    $('dialogTitle').textContent = o.title || '';
+    $('dialogText').textContent = o.text || '';
+    $('dialogCode').hidden = !o.code;
+    $('dialogCode').textContent = o.code || '';
+    $('dialogCopy').hidden = !o.code;
+    $('dialogCheckRow').hidden = !o.check;
+    $('dialogCheck').checked = false;
+    $('dialogCheckLabel').textContent = o.check || '';
+    const inp = $('dialogInput');
+    inp.hidden = !o.input;
+    inp.value = '';
+    inp.placeholder = o.input?.placeholder || '';
+    $('dialogOk').textContent = o.ok || 'OK';
+    $('dialogCancel').textContent = o.cancel || 'Annuler';
+    const finish = async value => { dialogDone = null; await closeLayerAsync(); resolve(value); };
+    $('dialogOk').onclick = () => {
+      if (o.check && !$('dialogCheck').checked) return toast('Coche la case pour continuer.');
+      if (o.input && !inp.value.trim()) return toast('Saisis le code.');
+      finish(o.input ? inp.value.trim() : true);
+    };
+    $('dialogCancel').onclick = () => finish(null);
+    inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('dialogOk').onclick(); } };
+    $('dialogCopy').onclick = async () => {
+      try { await navigator.clipboard.writeText(o.code); toast('Code de secours copié'); }
+      catch { toast('Copie impossible : recopie-le à la main.'); }
+    };
+    dialogDone = () => resolve(null);
+    openLayer('dialog');
+    if (o.input) setTimeout(() => inp.focus(), 60);
+  });
+}
+
+async function setupVault() {
+  const go = await askDialog({
+    title: 'Protéger les codes cagnotte',
+    text: "Les codes seront chiffrés et visibles seulement avec ton empreinte. L'app va d'abord te donner un code de secours à noter ailleurs : il servira si l'empreinte ne marche plus.",
+    ok: 'Continuer', cancel: 'Annuler'
+  });
+  if (!go) return null;
+  const recovery = makeRecoveryCode();
+  const noted = await askDialog({
+    title: 'Ton code de secours',
+    text: "Note-le (papier ou gestionnaire de mots de passe). Il ne sera plus jamais affiché. Sans lui et sans ton empreinte, les codes seraient perdus.",
+    code: recovery, check: "J'ai noté mon code de secours", ok: 'Continuer', cancel: 'Annuler'
+  });
+  if (!noted) return null;
+  const raw = randBytes(32);
+  const recSalt = randBytes(16);
+  const vault = { v: 1, recSalt: b64u(recSalt), wrapRec: await wrapBytes(await wrapKeyFromRecovery(recovery, recSalt), raw) };
+  try { await addFingerprint(vault, raw); toast('Empreinte activée ✓'); }
+  catch { toast("Empreinte indisponible : le code de secours servira à déverrouiller."); }
+  saveVault(vault);
+  vaultRaw = raw; vaultKey = await importMaster(raw); touchVault();
+  return vaultKey;
+}
+async function unlockWithRecovery(vault) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const code = await askDialog({
+      title: 'Code de secours',
+      text: attempt ? 'Code incorrect, réessaie.' : "Entre ton code de secours pour déverrouiller les codes cagnotte.",
+      input: { placeholder: 'XXXXX-XXXXX-XXXXX-XXXXX' }, ok: 'Déverrouiller', cancel: 'Annuler'
+    });
+    if (!code) return null;
+    try { return await unwrapBytes(await wrapKeyFromRecovery(code, unb64u(vault.recSalt)), vault.wrapRec); } catch {}
+  }
+  toast('Trop d\'essais : réessaie plus tard.');
+  return null;
+}
+async function unlockVault() {
+  if (vaultKey) { touchVault(); return vaultKey; }
+  const vault = loadVault();
+  if (!vault) return null;
+  let raw = null;
+  if (vault.wrapPrf && window.PublicKeyCredential) {
+    try {
+      const prf = await getPrfOutput(unb64u(vault.credId), unb64u(vault.prfSalt));
+      raw = await unwrapBytes(await wrapKeyFromPrf(prf), vault.wrapPrf);
+    } catch { raw = null; }
+  }
+  if (!raw) raw = await unlockWithRecovery(vault);
+  if (!raw) return null;
+  vaultRaw = raw; vaultKey = await importMaster(raw); touchVault();
+  return vaultKey;
+}
+async function ensureVaultKey() {
+  if (vaultKey) { touchVault(); return vaultKey; }
+  return loadVault() ? unlockVault() : setupVault();
+}
+async function encryptCode(plain) {
+  const key = await ensureVaultKey();
+  return key ? wrapBytes(key, enc8.encode(plain)) : null;
+}
+async function readCode(c) {
+  if (!loadVault()) { toast('Protection introuvable : ce code ne peut plus être lu.'); return null; }
+  const key = await unlockVault();
+  if (!key) return null;
+  try { return dec8.decode(await unwrapBytes(key, c.cagnotteCode)); }
+  catch { toast('Impossible de déchiffrer ce code.'); return null; }
+}
+
+/* Ligne « Code cagnotte » de la fiche */
+let revealTimer = null;
+function maskCode() {
+  clearTimeout(revealTimer); revealTimer = null;
+  $('cagnotteCodeText').textContent = '••••••';
+  $('cagnotteCodeShow').textContent = '👁';
+  $('cagnotteCodeShow').dataset.shown = '';
+}
+function refreshCodeRow(c) { maskCode(); $('cagnotteCodeRow').hidden = !c.cagnotteCode; }
+async function revealCode() {
+  if ($('cagnotteCodeShow').dataset.shown === '1') return maskCode();
+  const c = cards.find(x => x.id === openedId);
+  if (!c || !c.cagnotteCode) return;
+  const text = await readCode(c);
+  if (text === null || openedId !== c.id) return;
+  $('cagnotteCodeText').textContent = text;
+  $('cagnotteCodeShow').textContent = '🙈';
+  $('cagnotteCodeShow').dataset.shown = '1';
+  clearTimeout(revealTimer);
+  revealTimer = setTimeout(maskCode, 15000);
+}
+async function copyCode() {
+  const c = cards.find(x => x.id === openedId);
+  if (!c || !c.cagnotteCode) return;
+  const text = await readCode(c);
+  if (text === null) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Code copié (effacé du presse-papiers dans 30 s)');
+    setTimeout(() => { navigator.clipboard.writeText('').catch(() => {}); }, 30000);
+  } catch { toast('Copie impossible : utilise le bouton 👁 pour l\'afficher.'); }
+}
+
+/* Réglages de la protection (menu) */
+function refreshVaultMenu() { const on = !!loadVault(); $('fingerprintButton').hidden = !on; $('resetVaultButton').hidden = !on; }
+async function reenableFingerprint() {
+  const vault = loadVault();
+  if (!vault) return;
+  if (!window.PublicKeyCredential) return toast("L'empreinte n'est pas prise en charge sur ce navigateur.");
+  const key = await unlockVault();
+  if (!key || !vaultRaw) return;
+  try { await addFingerprint(vault, vaultRaw); saveVault(vault); toast('Empreinte activée ✓'); }
+  catch { toast("L'empreinte n'a pas pu être activée."); }
+}
+function resetVault() {
+  if (!confirm('Réinitialiser la protection ? Tous les codes cagnotte enregistrés seront supprimés (les cagnottes et les cartes restent).')) return;
+  localStorage.removeItem(VAULT_KEY);
+  lockVault();
+  cards.forEach(c => { delete c.cagnotteCode; });
+  save(); render(); refreshVaultMenu();
+  toast('Protection réinitialisée.');
+}
+
 /* ---------- Sauvegarde (export / import) ---------- */
 function exportCards() {
   if (!cards.length) return toast('Aucune carte à exporter.');
-  const payload = { app: 'mes-cartes', version: 3, exportedAt: new Date().toISOString(), cards };
+  const payload = { app: 'mes-cartes', version: 4, exportedAt: new Date().toISOString(), cards, vault: publicVault() };
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
   const a = el('a', { href: URL.createObjectURL(blob), download: `mes-cartes-${new Date().toISOString().slice(0, 10)}.json` });
   document.body.append(a); a.click(); a.remove();
@@ -872,12 +1115,19 @@ async function importCards(file) {
     const data = JSON.parse(await file.text());
     const list = Array.isArray(data) ? data : data.cards;
     if (!Array.isArray(list)) throw new Error('format');
+    // Codes cagnotte chiffrés : on ne les garde que s'ils peuvent être déchiffrés sur cet appareil
+    const fileVault = !Array.isArray(data) && data.vault && data.vault.recSalt && data.vault.wrapRec ? data.vault : null;
+    const localVault = loadVault();
+    let keepCodes = false;
+    if (fileVault && !localVault) { saveVault({ v: 1, recSalt: fileVault.recSalt, wrapRec: fileVault.wrapRec }); keepCodes = true; }
+    else if (fileVault && localVault && localVault.recSalt === fileVault.recSalt) keepCodes = true;
     const known = new Set(cards.map(c => c.id));
     const added = list.filter(c => c && typeof c.name === 'string' && c.name && !known.has(c.id))
-      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && c.kind !== 'loyalty' && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty') }));
+      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && c.kind !== 'loyalty' && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty'), cagnotteCode: keepCodes && c.cagnotteCode && typeof c.cagnotteCode.iv === 'string' && typeof c.cagnotteCode.ct === 'string' ? { iv: c.cagnotteCode.iv, ct: c.cagnotteCode.ct } : undefined }));
     const backup = JSON.stringify(cards);
     cards.push(...added);
     ensureOrder();
+    if (!keepCodes && list.some(c => c && c.cagnotteCode)) setTimeout(() => toast('Codes cagnotte non importés : la protection est différente sur cet appareil.'), 2400);
     if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : import impossible.'); }
     render();
     toast(added.length ? `${added.length} carte${added.length > 1 ? 's' : ''} importée${added.length > 1 ? 's' : ''} ✓` : 'Aucune nouvelle carte dans ce fichier.');
@@ -908,6 +1158,18 @@ $('cardsGrid').addEventListener('contextmenu', e => { if (reorderMode) e.prevent
 $('imageButton').addEventListener('click', () => $('imageInput').click());
 $('imageInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await readCodeFromImage(f); e.target.value = ''; });
 $('forceUpdateButton').addEventListener('click', forceUpdate);
+$('cagnotteCodeShow').addEventListener('click', revealCode);
+$('cagnotteCodeCopy').addEventListener('click', copyCode);
+$('cagnotteCodeEye').addEventListener('click', () => $('cagnotteCodeInput').classList.toggle('masked'));
+$('removeCagnotteCode').addEventListener('click', () => {
+  removeCode = true;
+  $('removeCagnotteCode').hidden = true;
+  $('cagnotteCodeInput').value = '';
+  $('cagnotteCodeInput').placeholder = "Le code sera retiré à l'enregistrement";
+});
+$('fingerprintButton').addEventListener('click', reenableFingerprint);
+$('resetVaultButton').addEventListener('click', resetVault);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { lockVault(); maskCode(); } });
 $('cagnotteToggle').addEventListener('change', updateBalanceFields);
 $('cagnotteEdit').addEventListener('click', openCagnotteEditor);
 $('cagnotteCancel').addEventListener('click', closeCagnotteEditor);
@@ -943,7 +1205,7 @@ $('closeTheme').addEventListener('click', closeLayer);
 $('themeBackdrop').addEventListener('click', closeLayer);
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePref === 'auto') applyTheme(); });
 
-$('menuButton').addEventListener('click', () => openLayer('menu'));
+$('menuButton').addEventListener('click', () => { refreshVaultMenu(); openLayer('menu'); });
 $('closeMenu').addEventListener('click', closeLayer);
 $('menuBackdrop').addEventListener('click', closeLayer);
 $('exportButton').addEventListener('click', exportCards);
