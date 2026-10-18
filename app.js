@@ -7,7 +7,7 @@ const THEME_KEY = 'loyalty_theme_v2';
 const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
-const APP_VERSION = '4.4';
+const APP_VERSION = '4.5';
 
 const CATEGORIES = [
   { id: 'courses', name: 'Courses', emoji: '🛒' },
@@ -497,15 +497,16 @@ function setFormKind(k) {
 /* Met à jour le solde d'une carte et l'historique (création, correction manuelle, ou désactivation) */
 function applyBalance(card, next) {
   if (next === null) { delete card.balance; delete card.history; return; }
+  if (card.kind === 'loyalty') { card.balance = next; delete card.history; return; }   // cagnotte : montant seul
   if (card.balance == null) {
     card.balance = next;
-    card.history = [{ t: Date.now(), d: next, a: next, n: card.kind === 'loyalty' ? 'Cagnotte initiale' : 'Solde initial' }];
+    card.history = [{ t: Date.now(), d: next, a: next, n: 'Solde initial' }];
     return;
   }
   if (Math.abs(card.balance - next) >= 0.005) {
     const d = round2(next - card.balance);
     card.balance = next;
-    card.history = [...(card.history || []), { t: Date.now(), d, a: next, n: card.kind === 'loyalty' ? 'Correction de la cagnotte' : 'Correction du solde' }].slice(-100);
+    card.history = [...(card.history || []), { t: Date.now(), d, a: next, n: 'Correction du solde' }].slice(-100);
   }
 }
 function toggleCodeFields() { $('codeFields').hidden = $('codeTypeInput').value === 'none'; }
@@ -648,8 +649,11 @@ function renderDetailMeta(c) {
 }
 function renderBalance(c) {
   const box = $('balanceBox');
-  box.hidden = c.balance == null;
-  if (c.balance == null) return;
+  const isCag = c.balance != null && kindOf(c) === 'loyalty';
+  $('cagnotteBox').hidden = !isCag;
+  if (isCag) { $('cagnotteValue').textContent = fmtMoney(c.balance); closeCagnotteEditor(); }
+  box.hidden = c.balance == null || isCag;
+  if (c.balance == null || isCag) return;
   const L = opLabels(c);
   $('balanceCaption').textContent = L.cap;
   $('spendButton').textContent = L.spendBtn;
@@ -667,9 +671,34 @@ function renderBalance(c) {
     el('span', { class: `h-amount ${h.d < 0 ? 'neg' : 'pos'}`, text: `${h.d < 0 ? '−' : '+'}${fmtMoney(Math.abs(h.d))}` }))));
   $('undoLast').hidden = (c.history || []).length < 2;
 }
-function balanceOp(sign) {
+/* Cagnotte d'une carte de fidélité : on modifie simplement le montant */
+function openCagnotteEditor() {
   const c = cards.find(x => x.id === openedId);
   if (!c || c.balance == null) return;
+  $('cagnotteInput').value = String(c.balance).replace('.', ',');
+  $('cagnotteView').hidden = true;
+  $('cagnotteEditor').hidden = false;
+  $('cagnotteInput').focus();
+  $('cagnotteInput').select();
+}
+function closeCagnotteEditor() { $('cagnotteEditor').hidden = true; $('cagnotteView').hidden = false; }
+function saveCagnotte() {
+  const c = cards.find(x => x.id === openedId);
+  if (!c || c.balance == null) return;
+  const value = parseAmount($('cagnotteInput').value, true);
+  if (value === null) return toast('Entre un montant valide (ex. 3,20).');
+  const before = c.balance;
+  c.balance = value;
+  delete c.history;
+  if (!save()) { c.balance = before; return toast("Stockage plein : impossible d'enregistrer."); }
+  vibrate(20);
+  $('cagnotteValue').textContent = fmtMoney(value);
+  closeCagnotteEditor();
+  toast('Cagnotte mise à jour ✓');
+}
+function balanceOp(sign) {
+  const c = cards.find(x => x.id === openedId);
+  if (!c || c.balance == null || kindOf(c) !== 'gift') return;
   const amount = parseAmount($('amountInput').value);
   if (amount === null) return toast('Entre un montant valide (ex. 12,50).');
   if (sign < 0 && amount > c.balance + 0.004) return toast('Le montant dépasse le solde restant.');
@@ -685,7 +714,7 @@ function balanceOp(sign) {
 }
 function undoLastOp() {
   const c = cards.find(x => x.id === openedId);
-  if (!c || c.balance == null || (c.history || []).length < 2) return;
+  if (!c || c.balance == null || kindOf(c) !== 'gift' || (c.history || []).length < 2) return;
   const last = c.history[c.history.length - 1];
   c.history = c.history.slice(0, -1);
   c.balance = round2(c.balance - last.d);
@@ -845,7 +874,7 @@ async function importCards(file) {
     if (!Array.isArray(list)) throw new Error('format');
     const known = new Set(cards.map(c => c.id));
     const added = list.filter(c => c && typeof c.name === 'string' && c.name && !known.has(c.id))
-      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty') }));
+      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && c.kind !== 'loyalty' && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty') }));
     const backup = JSON.stringify(cards);
     cards.push(...added);
     ensureOrder();
@@ -880,6 +909,13 @@ $('imageButton').addEventListener('click', () => $('imageInput').click());
 $('imageInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await readCodeFromImage(f); e.target.value = ''; });
 $('forceUpdateButton').addEventListener('click', forceUpdate);
 $('cagnotteToggle').addEventListener('change', updateBalanceFields);
+$('cagnotteEdit').addEventListener('click', openCagnotteEditor);
+$('cagnotteCancel').addEventListener('click', closeCagnotteEditor);
+$('cagnotteSave').addEventListener('click', saveCagnotte);
+$('cagnotteInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); saveCagnotte(); }
+  else if (e.key === 'Escape') { e.stopPropagation(); closeCagnotteEditor(); }
+});
 $('kindSwitch').addEventListener('click', e => { const b = e.target.closest('.seg'); if (b) setFormKind(b.dataset.kind); });
 $('tabLoyalty').addEventListener('click', () => setTab('loyalty'));
 $('tabGift').addEventListener('click', () => setTab('gift'));
