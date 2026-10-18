@@ -222,9 +222,6 @@ textarea.form-input{min-height:76px;padding:12px 13px;resize:vertical}
 .tab span{min-width:22px;padding:1px 7px;border-radius:999px;background:var(--line);font-size:.72rem}
 .tab.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px #0002}
 .tab.active span{background:var(--accent);color:var(--on-accent)}
-.gift-total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:10px 0 0;padding:14px 16px;border-radius:16px;background:var(--soft)}
-.gift-total small{color:var(--muted);font-weight:700;font-size:.78rem}
-.gift-total strong{font-size:1.5rem;letter-spacing:-.02em}
 .other-hint{display:block;width:100%;margin:8px 0 0;padding:10px 12px;border:1px dashed var(--line);border-radius:12px;background:transparent;color:var(--accent);font-weight:800;font-size:.84rem;text-align:left}
 .segmented{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 16px;padding:4px;border-radius:14px;background:var(--soft)}
 .seg{min-height:44px;border:0;border-radius:11px;background:transparent;color:var(--muted);font-weight:800}
@@ -240,3 +237,16 @@ textarea.form-input{min-height:76px;padding:12px 13px;resize:vertical}
 .cagnotte-editor .form-input{flex:1;min-width:0}
 .cagnotte-box .tool-button{width:42px;height:42px;min-width:42px;min-height:42px;border:0;border-radius:50%;background:var(--surface)}
 .cagnotte-box .tool-button.ok{background:var(--accent);color:var(--on-accent)}
+
+/* ---------- v4.6 : code cagnotte protégé ---------- */
+.masked{-webkit-text-security:disc;text-security:disc}
+.field-hint{margin:6px 2px 0;color:var(--muted);font-size:.76rem}
+.cagnotte-code{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.code-info{flex:1;min-width:0}
+.code-info span{display:block;color:var(--muted);font-size:.74rem;font-weight:700}
+.code-info strong{font-family:ui-monospace,Menlo,monospace;font-size:1.05rem;letter-spacing:1px;word-break:break-all}
+#dialogBackdrop{z-index:310}
+.dialog{z-index:320}
+.dialog h2{margin:0 0 8px;font-size:1.25rem}
+.dialog-text{margin:0 0 14px;color:var(--muted);line-height:1.5;font-size:.9rem}
+.recovery-code{margin:0 0 10px;padding:16px;border-radius:14px;background:var(--soft);font-family:ui-monospace,Menlo,monospace;font-size:1.1rem;font-weight:800;letter-spacing:1.5px;text-align:center;word-break:break-all;user-select:all}
