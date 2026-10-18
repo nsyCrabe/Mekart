@@ -1,6 +1,6 @@
 /* ===== Mes cartes — service worker v3 =====
    Change VERSION à chaque publication pour forcer la mise à jour du cache. */
-const VERSION = 'v10';
+const VERSION = 'v11';
 const CACHE = `mes-cartes-${VERSION}`;
 
 const CORE = ['./', 'index.html', 'style.css', 'app.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
