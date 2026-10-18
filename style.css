@@ -230,3 +230,13 @@ textarea.form-input{min-height:76px;padding:12px 13px;resize:vertical}
 .seg{min-height:44px;border:0;border-radius:11px;background:transparent;color:var(--muted);font-weight:800}
 .seg.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px #0002}
 .loyalty-card.empty{filter:grayscale(.85);opacity:.7}
+
+/* ---------- v4.5 : cagnotte simplifiée ---------- */
+.cagnotte-box{margin:0 0 14px;padding:12px 14px;border-radius:18px;background:var(--soft)}
+.cagnotte-view{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cagnotte-view small{display:block;color:var(--muted);font-size:.74rem;font-weight:700}
+.cagnotte-view strong{font-size:1.7rem;letter-spacing:-.02em}
+.cagnotte-editor{display:flex;align-items:center;gap:8px}
+.cagnotte-editor .form-input{flex:1;min-width:0}
+.cagnotte-box .tool-button{width:42px;height:42px;min-width:42px;min-height:42px;border:0;border-radius:50%;background:var(--surface)}
+.cagnotte-box .tool-button.ok{background:var(--accent);color:var(--on-accent)}
