@@ -245,8 +245,3 @@ textarea.form-input{min-height:76px;padding:12px 13px;resize:vertical}
 .code-info{flex:1;min-width:0}
 .code-info span{display:block;color:var(--muted);font-size:.74rem;font-weight:700}
 .code-info strong{font-family:ui-monospace,Menlo,monospace;font-size:1.05rem;letter-spacing:1px;word-break:break-all}
-#dialogBackdrop{z-index:310}
-.dialog{z-index:320}
-.dialog h2{margin:0 0 8px;font-size:1.25rem}
-.dialog-text{margin:0 0 14px;color:var(--muted);line-height:1.5;font-size:.9rem}
-.recovery-code{margin:0 0 10px;padding:16px;border-radius:14px;background:var(--soft);font-family:ui-monospace,Menlo,monospace;font-size:1.1rem;font-weight:800;letter-spacing:1.5px;text-align:center;word-break:break-all;user-select:all}
