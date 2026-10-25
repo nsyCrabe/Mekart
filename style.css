@@ -441,3 +441,8 @@ body[data-hl="accent2"] :is(.nav-add,.chip.active,.primary-button,.reorder-bar),
 body[data-hl="surface"] :is(.bottom-nav,.round-button,.search-box,.sort-select,.chip:not(.active),.quick-guide,.menu-item),
 body[data-hl="text"] :is(.topbar,.empty-state h2){animation:hl 1.1s ease 1}
 body[data-hl="bg"]::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;box-shadow:inset 0 0 0 6px var(--text);animation:hlFade 1.1s ease 1 forwards}
+
+/* Formulaire carte : sélecteur de couleur intégré + aperçu toujours visible */
+.form-colors{display:grid;gap:12px}
+.form-preview{position:sticky;top:0;z-index:4;margin:0 0 6px;padding:6px 0 10px;background:color-mix(in srgb,var(--surface) 96%,var(--bg))}
+.form-preview .loyalty-card{width:min(190px,56%)}

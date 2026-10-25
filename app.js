@@ -8,7 +8,7 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
-const APP_VERSION = '5.3';
+const APP_VERSION = '5.4';
 const VIEW_KEY = 'loyalty_view_v1';
 const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
@@ -948,33 +948,24 @@ function toggleCodeFields() { $('codeFields').hidden = $('codeTypeInput').value 
 
 function renderColors() {
   const row = $('colorRow');
-  row.replaceChildren();
-  COLORS.forEach(c => {
-    const d = el('button', { type: 'button', class: `color-dot${c === selectedColor ? ' selected' : ''}`, 'aria-label': `Couleur ${c}` });
+  row.className = 'form-colors';
+  const cur = isHex(selectedColor) ? selectedColor.toLowerCase() : COLORS[0];
+  selectedColor = cur;
+  const dots = el('div', { class: 'color-row', role: 'group', 'aria-label': 'Couleurs rapides' });
+  const dotBtns = COLORS.map(c => {
+    const d = el('button', { type: 'button', class: `color-dot${c === cur ? ' selected' : ''}`, 'aria-label': `Couleur ${c}` });
     d.style.background = c;
+    d.dataset.hex = c;
     d.addEventListener('click', () => { selectedColor = c; renderColors(); });
-    row.append(d);
+    dots.append(d);
+    return d;
   });
-  const sel = (selectedColor || '').toLowerCase();
-  const known = COLORS.includes(selectedColor) || savedColors.some(x => x.hex === sel);
-  savedColors.forEach(x => {
-    const d = el('button', { type: 'button', class: `color-dot${x.hex === sel ? ' selected' : ''}`, 'aria-label': x.name || `Couleur enregistrée ${x.hex}`, title: x.name || x.hex });
-    d.style.background = x.hex;
-    d.addEventListener('click', () => { selectedColor = x.hex; renderColors(); });
-    row.append(d);
+  const picker = buildPicker(cur, hex => {
+    selectedColor = hex;
+    dotBtns.forEach(d => d.classList.toggle('selected', d.dataset.hex === hex));
+    updatePreview();
   });
-  const custom = el('label', { class: `color-dot custom${known ? '' : ' selected'}`, 'aria-label': 'Couleur personnalisée' });
-  if (!known) custom.style.background = selectedColor;
-  const input = el('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(selectedColor) ? selectedColor : '#2264d1' });
-  input.addEventListener('input', () => { selectedColor = input.value; custom.style.background = input.value; custom.classList.add('selected'); row.querySelectorAll('.color-dot:not(.custom)').forEach(x => x.classList.remove('selected')); updatePreview(); });
-  input.addEventListener('change', renderColors);
-  custom.append(input);
-  row.append(custom);
-  if (!known) {
-    const sb = el('button', { type: 'button', class: 'text-button save-color', text: '☆ Enregistrer cette couleur' });
-    sb.addEventListener('click', () => { if (addSavedColor(selectedColor)) renderColors(); });
-    row.append(sb);
-  }
+  row.replaceChildren(dots, picker);
   updatePreview();
 }
 function updateLogoPreview() {
