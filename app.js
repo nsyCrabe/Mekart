@@ -8,9 +8,10 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
+const APP_VERSION = '5.0';
 const VIEW_KEY = 'loyalty_view_v1';
-const LOCK_KEY = 'loyalty_lock_v1';
-const APP_VERSION = '5.2';
+const BACKUP_KEY = 'loyalty_last_backup';
+const SNOOZE_KEY = 'loyalty_backup_snooze';
 
 const CATEGORIES = [
   { id: 'courses', name: 'Courses', emoji: '🛒' },
@@ -27,6 +28,18 @@ const CATEGORIES = [
 const catById = id => CATEGORIES.find(c => c.id === id);
 
 const COLORS = ['#2264d1', '#8b5cf6', '#e05252', '#e88b27', '#168c65', '#008da8', '#d04d91', '#475569'];
+
+/* Magasins courants : un clic préremplit le nom, la catégorie et la couleur */
+const TEMPLATES = [
+  ['Carrefour', 'courses', '#2264d1'], ['E.Leclerc', 'courses', '#e88b27'], ['Auchan', 'courses', '#e05252'],
+  ['Intermarché', 'courses', '#e05252'], ['Lidl', 'courses', '#2264d1'], ['Monoprix', 'courses', '#d04d91'],
+  ['Franprix', 'courses', '#168c65'], ['Picard', 'courses', '#008da8'], ['Casino', 'courses', '#168c65'],
+  ['TotalEnergies', 'essence', '#e05252'], ['Shell', 'essence', '#e88b27'], ['Decathlon', 'loisirs', '#2264d1'],
+  ['Fnac', 'loisirs', '#e88b27'], ['Cultura', 'loisirs', '#8b5cf6'], ['Leroy Merlin', 'maison', '#168c65'],
+  ['Castorama', 'maison', '#008da8'], ['IKEA', 'maison', '#2264d1'], ['Sephora', 'beaute', '#475569'],
+  ['Yves Rocher', 'beaute', '#168c65'], ['Kiabi', 'mode', '#2264d1'], ['Action', 'maison', '#e05252'],
+  ['Amazon', 'autre', '#e88b27']
+].map(([name, category, color]) => ({ name, category, color }));
 
 const THEMES = [
   { id: 'light', name: 'Clair', category: 'light', description: 'Propre et lumineux', swatch: 'linear-gradient(135deg,#f4f7fb,#3268e8)' },
@@ -46,37 +59,38 @@ const DARK_IDS = THEMES.filter(t => t.category === 'dark').map(t => t.id);
 
 const $ = id => document.getElementById(id);
 
-/* ---------- Icônes (SVG simples, héritent de la couleur du texte) ---------- */
+/* ---------- Icônes (SVG, identiques sur tous les téléphones) ---------- */
+const mk = p => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
 const ICONS = {
-  palette: '<circle cx="13.5" cy="6.5" r=".8"/><circle cx="17.5" cy="10.5" r=".8"/><circle cx="8.5" cy="7.5" r=".8"/><circle cx="6.5" cy="12.5" r=".8"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.700 6-6 0-4.900-4.500-8.800-10-8.800z"/>',
-  sliders: '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3"/><path d="M14 2v4M8 10v4M16 18v4"/>',
-  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/>',
-  x: '<path d="M18 6 6 18M6 6l12 12"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>',
-  check: '<path d="m5 12.500 4.500 4.500L19 7.500"/>',
-  star: '<path d="m12 2.800 2.800 5.700 6.300.9-4.600 4.400 1.100 6.300L12 17.200l-5.600 2.900 1.100-6.300L2.900 9.400l6.300-.9z"/>',
-  'star-fill': '<path fill="currentColor" d="m12 2.800 2.800 5.700 6.300.9-4.600 4.400 1.100 6.300L12 17.200l-5.600 2.900 1.100-6.300L2.900 9.400l6.300-.9z"/>',
-  edit: '<path d="M12 20h9"/><path d="M16.500 3.500a2.100 2.100 0 0 1 3 3L7 19l-4 1 1-4z"/>',
-  trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>',
-  scan: '<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>',
-  image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.100-3.100a2 2 0 0 0-2.800 0L6 21"/>',
-  eye: '<path d="M2 12s3.600-7 10-7 10 7 10 7-3.600 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-  'eye-off': '<path d="M9.900 4.200A10 10 0 0 1 12 4c6.400 0 10 8 10 8a17 17 0 0 1-3.200 4.200M6.600 6.600A17 17 0 0 0 2 12s3.600 7 10 7a9.700 9.700 0 0 0 5.400-1.600"/><path d="M14.100 14.100a3 3 0 1 1-4.200-4.200"/><path d="m2 2 20 20"/>',
-  unlock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.500-2"/>',
-  reorder: '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>',
-  grid: '<rect x="3" y="3" width="7" height="7" rx="1.500"/><rect x="14" y="3" width="7" height="7" rx="1.500"/><rect x="3" y="14" width="7" height="7" rx="1.500"/><rect x="14" y="14" width="7" height="7" rx="1.500"/>',
-  list: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.500" cy="6" r=".8"/><circle cx="3.500" cy="12" r=".8"/><circle cx="3.500" cy="18" r=".8"/>',
-  upload: '<path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
-  download: '<path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
-  phone: '<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 18h.01"/>',
-  refresh: '<path d="M21 12a9 9 0 1 1-3-6.700L21 8"/><path d="M21 3v5h-5"/>',
-  bulb: '<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.700c.6.500 1 1.300 1 2.300h6c0-1 .4-1.800 1-2.300A7 7 0 0 0 12 2z"/>',
-  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
-  store: '<path d="m3 9 1.500-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/>'
+  search: mk('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'),
+  palette: mk('<path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7" r="1"/>'),
+  sliders: mk('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),
+  plus: mk('<path d="M12 5v14M5 12h14"/>'),
+  close: mk('<path d="M6 6l12 12M18 6L6 18"/>'),
+  check: mk('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  star: mk('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'),
+  starFill: mk('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>').replace('fill="none"', 'fill="currentColor"'),
+  more: mk('<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>'),
+  edit: mk('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
+  trash: mk('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+  camera: mk('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
+  image: mk('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="M21 16l-5-5-8 9"/>'),
+  eye: mk('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+  eyeOff: mk('<path d="M3 3l18 18M10.6 5.1A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.5 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7c1.7 0 3.2-.4 4.5-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'),
+  unlock: mk('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/>'),
+  card: mk('<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/>'),
+  gift: mk('<rect x="3" y="9" width="18" height="11" rx="2"/><path d="M12 9v11M3 13h18"/><path d="M12 9c-2.5 0-4-1-4-2.5S9 4 10.5 4C12 4 12 7 12 9zM12 9c2.5 0 4-1 4-2.5S15 4 13.5 4C12 4 12 7 12 9z"/>'),
+  grid: mk('<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>'),
+  list: mk('<path d="M4 6h16M4 12h16M4 18h16"/>'),
+  store: mk('<path d="M4 9l1-4h14l1 4M4 9v10h16V9M4 9h16M9 19v-5h6v5"/>'),
+  bolt: mk('<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>'),
+  upload: mk('<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>'),
+  download: mk('<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>'),
+  phone: mk('<rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 18h2"/>'),
+  refresh: mk('<path d="M20 11a8 8 0 0 0-14-4M4 5v4h4M4 13a8 8 0 0 0 14 4M20 19v-4h-4"/>')
 };
-const ic = name => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
-const setIcon = (node, name) => { node.innerHTML = ic(name); };
-function iconEl(name, cls) { const s = document.createElement('span'); if (cls) s.className = cls; s.innerHTML = ic(name); return s; }
+const setIcon = (node, name) => { node.innerHTML = ICONS[name] || ''; };
+const paintIcons = () => document.querySelectorAll('[data-icon]').forEach(n => setIcon(n, n.dataset.icon));
 
 /* ---------- État ---------- */
 let cards = [];
@@ -91,7 +105,6 @@ let formKind = 'loyalty';   // type de carte dans le formulaire
 let removeCode = false;     // « Retirer le code enregistré » demandé dans le formulaire
 let sortMode = 'recent';
 let viewMode = 'grid';      // grid | list
-let firstPaint = true;      // l'animation d'entrée des cartes ne joue qu'au démarrage
 let themePref = 'auto';
 let stream = null;
 let scanTimer = null;
@@ -110,10 +123,15 @@ function darken(hex, amount = -30) {
   const c = v => Math.max(0, Math.min(255, v + amount));
   return '#' + ((1 << 24) + (c(n >> 16) << 16) + (c((n >> 8) & 255) << 8) + c(n & 255)).toString(16).slice(1);
 }
-function isLight(hex) {
+function lum(hex) {
   const n = parseInt(hex.replace('#', ''), 16);
-  const r = n >> 16, g = (n >> 8) & 255, b = n & 255;
-  return (0.299 * r + 0.587 * g + 0.114 * b) > 170;
+  const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(n >> 16) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255);
+}
+/* Vrai si le texte sombre est plus lisible que le texte blanc sur cette couleur (contraste WCAG) */
+function isLight(hex) {
+  const L = lum(hex);
+  return (L + 0.05) / 0.0587 > 1.3 * 1.05 / (L + 0.05);   // léger avantage au texte blanc, plus classique sur les cartes
 }
 function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -143,13 +161,6 @@ function parseAmount(str, allowZero = false) {
   const n = Number(txt);
   if (!Number.isFinite(n) || n < 0 || n > 100000 || (!allowZero && n <= 0)) return null;
   return round2(n);
-}
-function parseTags(str) {
-  const seen = new Set();
-  return (str || '').split(/[,;\n]/)
-    .map(t => t.trim().replace(/^#/, '').slice(0, 20))
-    .filter(t => { const k = norm(t); if (!t || seen.has(k)) return false; seen.add(k); return true; })
-    .slice(0, 8);
 }
 function vibrate(ms = 12) { try { navigator.vibrate && navigator.vibrate(ms); } catch {} }
 
@@ -200,9 +211,12 @@ function applyTheme() {
   const id = resolveTheme();
   document.body.dataset.theme = id;
   document.body.dataset.mode = DARK_IDS.includes(id) ? 'dark' : 'light';
-  const bg = getComputedStyle(document.body).getPropertyValue('--bg').trim();
-  if (bg) $('themeColorMeta').content = bg;
+  syncThemeColor();
   renderThemes();
+}
+function syncThemeColor(color) {
+  const bg = color || getComputedStyle(document.body).getPropertyValue('--bg').trim();
+  if (bg) $('themeColorMeta').content = bg;
 }
 function setTheme(pref) {
   themePref = pref;
@@ -221,7 +235,7 @@ function renderThemes() {
     swatch: 'linear-gradient(135deg,#f4f7fb 50%,#0e1525 50%)'
   });
   const root = $('themeList');
-  root.replaceChildren(autoBtn, section('light', 'Clair', 'Des couleurs lumineuses'), section('dark', 'Sombre', 'Confortable dans le noir'));
+  root.replaceChildren(autoBtn, section('light', '☀️ Clair', 'Des couleurs lumineuses'), section('dark', '🌙 Sombre', 'Confortable dans le noir'));
 }
 function themeButton(t) {
   const active = t.id === themePref;
@@ -243,6 +257,17 @@ function ensureOrder() {
 }
 const tabCards = () => cards.filter(c => kindOf(c) === tab);
 const isSpent = c => kindOf(c) === 'gift' && c.balance != null && c.balance <= 0.004;   // « épuisée » : cartes cadeaux seulement
+/* Expiration (cartes cadeaux) : nombre de jours restants, 0 = aujourd'hui, négatif = expirée */
+const dayDiff = c => {
+  if (!c.expires || !/^\d{4}-\d{2}-\d{2}$/.test(c.expires)) return null;
+  const [y, m, d] = c.expires.split('-').map(Number);
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  return Math.round((new Date(y, m - 1, d) - t) / 864e5);
+};
+const isExpired = c => kindOf(c) === 'gift' && dayDiff(c) !== null && dayDiff(c) < 0;
+const isSoon = c => kindOf(c) === 'gift' && !isSpent(c) && dayDiff(c) !== null && dayDiff(c) >= 0 && dayDiff(c) <= 30;
+const isDead = c => isSpent(c) || isExpired(c);
+const expiryText = c => { const n = dayDiff(c); return n === null ? '' : n < 0 ? 'Expirée' : n === 0 ? "Expire aujourd'hui" : `Expire dans ${n} j`; };
 function matchesFilter(c) {
   if (filter.kind === 'fav') return !!c.fav;
   if (filter.kind === 'cagnotte') return c.balance != null;
@@ -263,8 +288,10 @@ function sortedFiltered() {
   };
   const cmp = byMode[sortMode] || byMode.recent;
   const auto = sortMode !== 'manual';
+  const gift = auto && tab === 'gift';
   list.sort((a, b) =>
-    (auto && tab === 'gift' ? (isSpent(a) ? 1 : 0) - (isSpent(b) ? 1 : 0) : 0)   // cartes épuisées en bas
+    (gift ? (isDead(a) ? 1 : 0) - (isDead(b) ? 1 : 0) : 0)   // épuisées / expirées en bas
+    || (gift ? (isSoon(b) ? 1 : 0) - (isSoon(a) ? 1 : 0) || (isSoon(a) && isSoon(b) ? dayDiff(a) - dayDiff(b) : 0) : 0)   // bientôt expirées en haut
     || (auto ? (b.fav ? 1 : 0) - (a.fav ? 1 : 0) : 0)
     || cmp(a, b));
   return list;
@@ -299,6 +326,9 @@ function setTab(t) {
 function render() {
   const grid = $('cardsGrid');
   grid.replaceChildren();
+  $('lastBanner').hidden = true;
+  updateBackupInfo();
+  updateViewButton();
   const giftN = cards.filter(c => kindOf(c) === 'gift').length;
   $('countGift').textContent = giftN;
   $('countLoyalty').textContent = cards.length - giftN;
@@ -308,7 +338,7 @@ function render() {
     $('tab' + k).setAttribute('aria-selected', on ? 'true' : 'false');
   });
   $('cardCount').textContent = `${cards.length} carte${cards.length > 1 ? 's' : ''}`;
-  $('addLabel').textContent = tab === 'gift' ? 'Ajouter une carte cadeau' : 'Ajouter une carte';
+  $('addButton').setAttribute('aria-label', tab === 'gift' ? 'Ajouter une carte cadeau' : 'Ajouter une carte');
 
   const pool = tabCards();
   const none = pool.length === 0;
@@ -346,52 +376,58 @@ function render() {
   $('reorderButton').classList.toggle('active', reorderMode);
   grid.classList.toggle('reordering', reorderMode);
   grid.classList.toggle('list', viewMode === 'list');
-  setIcon($('viewButton'), viewMode === 'list' ? 'grid' : 'list');
-  $('viewButton').setAttribute('aria-label', viewMode === 'list' ? 'Passer en affichage grille' : 'Passer en affichage liste');
+
+  const lb = $('lastBanner');
+  if (tab === 'loyalty' && !q && filter.kind === 'all' && !reorderMode && pool.length >= 4) {
+    const last = pool.filter(c => c.lastUsed).sort((a, b) => b.lastUsed - a.lastUsed)[0];
+    if (last) {
+      const color = last.color || COLORS[0];
+      lb.style.setProperty('--card-color', color);
+      lb.style.setProperty('--card-color-dark', darken(color));
+      lb.style.setProperty('--card-fg', isLight(color) ? '#14181f' : '#fff');
+      const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(last));
+      lb.replaceChildren(logo, el('div', {}, el('small', { text: 'Dernière utilisée' }), el('strong', { text: last.name })));
+      lb.onclick = () => openDetail(last.id);
+      lb.hidden = false;
+    }
+  }
 
   const list = sortedFiltered();
   if (!list.length) {
     grid.append(el('p', { class: 'no-result', text: $('searchInput').value ? 'Aucune carte trouvée.' : 'Aucune carte dans ce filtre.' }));
     return;
   }
-  list.forEach((c, i) => {
-    const color = c.color || COLORS[0];
-    const cat = catById(c.category);
-    const spent = isSpent(c);
-    const b = el('button', { type: 'button', class: `loyalty-card${spent ? ' empty' : ''}`, 'aria-label': `Ouvrir la carte ${c.name}` });
-    b.dataset.id = c.id;
-    b.style.setProperty('--card-color', color);
-    b.style.setProperty('--card-color-dark', darken(color));
-    b.style.setProperty('--card-fg', isLight(color) ? '#14181f' : '#fff');
-    if (firstPaint) { b.classList.add(viewMode === 'list' ? 'enter' : 'fan'); if (viewMode === 'list') b.style.animationDelay = `${Math.min(i, 10) * 35}ms`; }
-    const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(c));
-    const typeText = spent ? 'Épuisée' : (cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType));
-    b.append(
-      el('div', { class: 'card-top' }, logo, (c.fav || c.balance != null) ? el('div', { class: 'card-badges' }, c.balance != null ? el('span', { class: 'card-balance', text: (kindOf(c) === 'loyalty' ? '💰 ' : '') + fmtMoney(c.balance) }) : null, c.fav ? iconEl('star-fill', 'card-fav') : null) : null),
-      el('div', { class: 'card-text' }, el('p', { class: 'card-name', text: c.name }), el('p', { class: 'card-type', text: typeText }))
-    );
-    b.addEventListener('click', () => { if (!reorderMode) openDetail(c.id); });
-    grid.append(b);
-  });
-  if (firstPaint && viewMode === 'grid') fanIn(grid);
-  firstPaint = false;
+  list.forEach((c, i) => grid.append(buildCard(c, i)));
 }
 
-/* ---------- Ouverture : les cartes se déploient en éventail (une seule fois par lancement) ---------- */
-function fanIn(grid) {
-  const nodes = [...grid.querySelectorAll('.loyalty-card.fan')];
-  const g = grid.getBoundingClientRect();
-  const ax = g.left + g.width / 2, ay = g.top + 40;
-  const shown = nodes.filter(n => n.getBoundingClientRect().top < innerHeight).slice(0, 10);
-  nodes.forEach(n => n.classList.remove('fan'));
-  shown.forEach((n, i) => {
-    const r = n.getBoundingClientRect();
-    n.style.setProperty('--fx', `${Math.round(ax - (r.left + r.width / 2))}px`);
-    n.style.setProperty('--fy', `${Math.round(ay - (r.top + r.height / 2))}px`);
-    n.style.setProperty('--fr', `${((i - (shown.length - 1) / 2) * 5).toFixed(1)}deg`);
-    n.style.animationDelay = `${60 + i * 55}ms`;
-    n.classList.add('fan');
-  });
+/* Une carte de la liste (ou son aperçu dans le formulaire) */
+function buildCard(c, i = 0, preview = false) {
+  const color = c.color || COLORS[0];
+  const cat = catById(c.category);
+  const spent = isSpent(c);
+  const soon = isSoon(c);
+  const b = el(preview ? 'div' : 'button', { class: `loyalty-card${isDead(c) ? ' empty' : ''}${preview ? ' preview' : ''}` });
+  if (preview) b.setAttribute('aria-hidden', 'true');
+  else {
+    b.setAttribute('type', 'button');
+    b.setAttribute('aria-label', `Ouvrir la carte ${c.name}`);
+    b.dataset.id = c.id;
+    b.style.animationDelay = `${Math.min(i, 10) * 35}ms`;
+  }
+  b.style.setProperty('--card-color', color);
+  b.style.setProperty('--card-color-dark', darken(color));
+  b.style.setProperty('--card-fg', isLight(color) ? '#14181f' : '#fff');
+  const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(c));
+  const typeText = spent ? 'Épuisée' : isExpired(c) ? 'Expirée' : soon ? expiryText(c) : (cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType));
+  b.append(
+    el('div', { class: 'card-top' }, logo, (c.fav || c.balance != null) ? el('div', { class: 'card-badges' }, c.balance != null ? el('span', { class: 'card-balance', text: (kindOf(c) === 'loyalty' ? '💰 ' : '') + fmtMoney(c.balance) }) : null, c.fav ? el('span', { class: 'card-fav', text: '★' }) : null) : null),
+    el('div', { class: 'card-text' }, el('p', { class: 'card-name', text: c.name }), el('p', { class: `card-type${soon ? ' warn' : ''}`, text: typeText }))
+  );
+  if (!preview) b.addEventListener('click', () => { if (!reorderMode) openDetail(c.id); });
+  return b;
+}
+function updateViewButton() {
+  $('viewButton').innerHTML = ICONS[viewMode === 'list' ? 'grid' : 'list'] + `<span>${viewMode === 'list' ? 'Grille' : 'Liste'}</span>`;
 }
 
 /* ---------- Réorganisation par glisser-déposer ---------- */
@@ -518,6 +554,9 @@ function showForm(id = null) {
   $('codeTypeInput').value = c?.codeType || 'barcode';
   $('notesInput').value = c?.notes || '';
   $('categoryInput').value = c?.category || '';
+  $('expiryInput').value = c?.expires || '';
+  $('pinInput').value = c?.pin || '';
+  $('pinInput').classList.add('masked');
   $('balanceInput').value = c && c.balance != null ? String(c.balance).replace('.', ',') : '';
   $('cagnotteToggle').checked = !!c && kindOf(c) === 'loyalty' && c.balance != null;
   $('cagnotteCodeInput').value = '';
@@ -531,12 +570,16 @@ function showForm(id = null) {
   updateLogoPreview();
   renderColors();
   toggleCodeFields();
+  $('templates').hidden = !!c;
+  $('advanced').open = !!(c && (c.notes || c.pin || (c.codeType && c.codeType !== 'barcode')));
 }
 function updateBalanceFields() {
   const show = formKind === 'gift' || (formKind === 'loyalty' && $('cagnotteToggle').checked);
   $('giftFields').hidden = !show;
   $('cagnotteCodeWrap').hidden = formKind !== 'loyalty';
   $('balanceLabel').textContent = formKind === 'gift' ? 'Solde actuel (€)' : 'Cagnotte actuelle (€)';
+  $('expiryWrap').hidden = formKind !== 'gift';
+  updatePreview();
 }
 function setFormKind(k) {
   formKind = k;
@@ -560,6 +603,56 @@ function applyBalance(card, next) {
     card.history = [...(card.history || []), { t: Date.now(), d, a: next, n: 'Correction du solde' }].slice(-100);
   }
 }
+/* Aperçu de la carte pendant la saisie */
+function updatePreview() {
+  const box = $('formPreview');
+  if (!box) return;
+  const bal = $('giftFields').hidden ? null : parseAmount($('balanceInput').value, true);
+  const tmp = {
+    name: $('nameInput').value.trim() || 'Nom du magasin', color: selectedColor, logo: selectedLogo,
+    category: $('categoryInput').value, kind: formKind, codeType: $('codeTypeInput').value,
+    balance: bal != null ? bal : undefined,
+    expires: formKind === 'gift' ? ($('expiryInput').value || undefined) : undefined
+  };
+  box.replaceChildren(buildCard(tmp, 0, true));
+}
+function renderTemplates() {
+  const box = $('templateList');
+  box.replaceChildren();
+  TEMPLATES.forEach(t => {
+    const b = el('button', { type: 'button', class: 'chip small', text: t.name });
+    b.addEventListener('click', () => {
+      $('nameInput').value = t.name;
+      $('categoryInput').value = t.category;
+      selectedColor = t.color;
+      renderColors();
+    });
+    box.append(b);
+  });
+}
+/* Couleur dominante d'un logo (ignore le blanc, le noir et les gris) */
+function dominantColor(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const s = 32, cv = document.createElement('canvas');
+      cv.width = cv.height = s;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(img, 0, 0, s, s);
+      const d = ctx.getImageData(0, 0, s, s).data;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) < 40) continue;
+        r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+      }
+      if (n < 20) return resolve(null);
+      const h = v => Math.round(v / n).toString(16).padStart(2, '0');
+      resolve('#' + h(r) + h(g) + h(b));
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
 function toggleCodeFields() { $('codeFields').hidden = $('codeTypeInput').value === 'none'; }
 
 function renderColors() {
@@ -574,15 +667,17 @@ function renderColors() {
   const custom = el('label', { class: `color-dot custom${COLORS.includes(selectedColor) ? '' : ' selected'}`, 'aria-label': 'Couleur personnalisée' });
   if (!COLORS.includes(selectedColor)) custom.style.background = selectedColor;
   const input = el('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(selectedColor) ? selectedColor : '#2264d1' });
-  input.addEventListener('input', () => { selectedColor = input.value; custom.style.background = input.value; custom.classList.add('selected'); row.querySelectorAll('.color-dot:not(.custom)').forEach(x => x.classList.remove('selected')); });
+  input.addEventListener('input', () => { selectedColor = input.value; custom.style.background = input.value; custom.classList.add('selected'); row.querySelectorAll('.color-dot:not(.custom)').forEach(x => x.classList.remove('selected')); updatePreview(); });
   custom.append(input);
   row.append(custom);
+  updatePreview();
 }
 function updateLogoPreview() {
   const p = $('logoPreview');
   p.replaceChildren();
   if (selectedLogo) { p.append(el('img', { src: selectedLogo, alt: 'Logo sélectionné' })); $('removeLogo').hidden = false; }
-  else { p.append(iconEl('store')); $('removeLogo').hidden = true; }
+  else { const s = el('span', { class: 'ph-icon' }); s.innerHTML = ICONS.store; p.append(s); $('removeLogo').hidden = true; }
+  updatePreview();
 }
 function resizeLogo(file) {
   return new Promise((resolve, reject) => {
@@ -627,7 +722,7 @@ function saveCard(e) {
   const typedCode = $('cagnotteCodeInput').value.trim();
   if (!wantsCag || removeCode) newCode = null;
   else if (typedCode) newCode = typedCode.slice(0, 60);
-  const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), kind: formKind, format: scannedFormat || null, category: $('categoryInput').value };
+  const data = { name, code, codeType, color: selectedColor, logo: selectedLogo, notes: $('notesInput').value.trim(), kind: formKind, format: scannedFormat || null, category: $('categoryInput').value, expires: formKind === 'gift' ? ($('expiryInput').value || null) : null, pin: $('pinInput').value.trim().slice(0, 20) || null };
   const backup = JSON.stringify(cards);
   let target;
   if (editingId) { target = cards.find(c => c.id === editingId); Object.assign(target, data); }
@@ -667,12 +762,15 @@ function openDetail(id) {
   c.lastUsed = Date.now();
   save();
 
-  const panel = $('detailPanel'), tone = c.color || COLORS[0];
-  panel.style.setProperty('--card-color', tone);
-  panel.style.setProperty('--card-color-dark', darken(tone));
-  panel.style.setProperty('--card-fg', isLight(tone) ? '#14181f' : '#fff');
-  panel.classList.remove('code-big');
   $('detailName').textContent = c.name;
+  const color = c.color || COLORS[0];
+  const dp = $('detailPanel');
+  dp.style.setProperty('--card-color', color);
+  dp.style.setProperty('--card-color-dark', darken(color));
+  dp.style.setProperty('--card-fg', isLight(color) ? '#14181f' : '#fff');
+  syncThemeColor(color);
+  $('detailMenu').hidden = true;
+  refreshPinRow(c);
   $('detailType').textContent = typeLabel(c.codeType);
   $('detailLogo').replaceChildren(logoNode(c));
   $('detailCode').textContent = c.code || '';
@@ -707,6 +805,11 @@ function renderDetailMeta(c) {
   box.replaceChildren();
   const cat = catById(c.category);
   if (cat) box.append(el('span', { class: 'tag cat', text: `${cat.emoji} ${cat.name}` }));
+  const n = dayDiff(c);
+  if (n !== null && kindOf(c) === 'gift') {
+    const when = new Date(c.expires + 'T00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+    box.append(el('span', { class: `tag${n <= 30 ? ' warn' : ''}`, text: n < 0 ? `Expirée le ${when}` : `Expire le ${when}` }));
+  }
   (c.tags || []).forEach(t => box.append(el('span', { class: 'tag', text: `#${t}` })));
   box.hidden = !box.children.length;
 }
@@ -722,6 +825,8 @@ function renderBalance(c) {
   $('spendButton').textContent = L.spendBtn;
   $('topupButton').textContent = L.topupBtn;
   $('balanceValue').textContent = fmtMoney(c.balance);
+  const top = Math.max(c.balance, ...(c.history || []).map(h => h.a || 0));
+  $('balanceBar').style.width = `${top > 0 ? Math.max(0, Math.min(100, c.balance / top * 100)) : 0}%`;
   $('amountInput').value = '';
   $('amountNote').value = '';
   $('historyList').hidden = true;
@@ -789,19 +894,20 @@ function undoLastOp() {
 function cleanupDetail() {
   openedId = null;
   maskCode();
+  maskPin();
+  $('detailMenu').hidden = true;
+  syncThemeColor();
   $('codeBox').classList.remove('big');
-  $('detailPanel').classList.remove('code-big');
   releaseAwake();
   render(); // met à jour l'ordre (récentes / utilisées)
 }
 function syncFavButton(c) {
-  setIcon($('favCard'), c.fav ? 'star-fill' : 'star');
+  setIcon($('favCard'), c.fav ? 'starFill' : 'star');
   $('favCard').setAttribute('aria-pressed', c.fav ? 'true' : 'false');
 }
 function toggleBig() {
   const box = $('codeBox');
   const big = box.classList.toggle('big');
-  $('detailPanel').classList.toggle('code-big', big);
   $('codeHint').textContent = big ? 'Touche pour réduire' : 'Touche pour agrandir';
   box.setAttribute('aria-label', big ? 'Réduire le code' : 'Agrandir le code');
 }
@@ -815,32 +921,67 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 /* ---------- Scanner ---------- */
 const FORMAT_MAP = { ean_13: 'EAN13', ean_8: 'EAN8', upc_a: 'UPC', upc_e: 'UPC', code_128: 'CODE128', code_39: 'CODE39' };
+const ZX_FORMAT_MAP = { EAN_13: 'EAN13', EAN_8: 'EAN8', UPC_A: 'UPC', UPC_E: 'UPC', CODE_128: 'CODE128', CODE_39: 'CODE39' };
+const ZX_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+const hasNativeDetector = 'BarcodeDetector' in window;
+let zxReader = null;
+/* Safari iOS et Firefox n'ont pas BarcodeDetector : on charge ZXing à la demande */
+function loadZXing() {
+  if (window.ZXing) return Promise.resolve(window.ZXing);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = ZX_URL;
+    s.onload = () => (window.ZXing ? resolve(window.ZXing) : reject(new Error('zxing')));
+    s.onerror = () => reject(new Error('zxing'));
+    document.head.append(s);
+  });
+}
+function zxResult(r, ZX) {
+  const name = ZX.BarcodeFormat[r.getBarcodeFormat()];
+  return { raw: r.getText(), isQr: name === 'QR_CODE', format: ZX_FORMAT_MAP[name] || null };
+}
+function applyScanned(raw, isQr, format) {
+  $('codeInput').value = raw;
+  $('codeTypeInput').value = isQr ? 'qrcode' : 'barcode';
+  scannedFormat = isQr ? null : (format || null);
+  toggleCodeFields();
+  updatePreview();
+  vibrate(30);
+}
 async function openScanner() {
-  if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) {
+  if (!navigator.mediaDevices?.getUserMedia) {
     return toast('Scanner indisponible sur ce navigateur : saisis le numéro à la main.');
   }
   openLayer('scanner');
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    $('scanVideo').srcObject = stream;
-    const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
-    scanTimer = setInterval(async () => {
-      try {
-        const result = await detector.detect($('scanVideo'));
-        if (!result.length) return;
-        $('codeInput').value = result[0].rawValue;
-        const isQr = result[0].format === 'qr_code';
-        $('codeTypeInput').value = isQr ? 'qrcode' : 'barcode';
-        scannedFormat = isQr ? null : (FORMAT_MAP[result[0].format] || null);
-        toggleCodeFields();
-        vibrate(30);
+    if (hasNativeDetector) {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      $('scanVideo').srcObject = stream;
+      const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
+      scanTimer = setInterval(async () => {
+        try {
+          const result = await detector.detect($('scanVideo'));
+          if (!result.length || !stack.includes('scanner')) return;
+          applyScanned(result[0].rawValue, result[0].format === 'qr_code', FORMAT_MAP[result[0].format]);
+          closeLayer();
+          toast('Code trouvé ✓');
+        } catch {}
+      }, 300);
+    } else {
+      const ZX = await loadZXing();
+      if (!stack.includes('scanner')) return;
+      zxReader = new ZX.BrowserMultiFormatReader();
+      await zxReader.decodeFromConstraints({ video: { facingMode: 'environment' } }, $('scanVideo'), result => {
+        if (!result || !stack.includes('scanner')) return;
+        const r = zxResult(result, ZX);
+        applyScanned(r.raw, r.isQr, r.format);
         closeLayer();
         toast('Code trouvé ✓');
-      } catch {}
-    }, 300);
+      });
+    }
   } catch {
-    closeLayer();
-    toast('Autorise la caméra pour scanner.');
+    if (stack.includes('scanner')) closeLayer();
+    toast('Scanner indisponible : autorise la caméra ou saisis le numéro.');
   }
 }
 function stopScan() {
@@ -848,42 +989,47 @@ function stopScan() {
   scanTimer = null;
   if (stream) stream.getTracks().forEach(t => t.stop());
   stream = null;
+  if (zxReader) { try { zxReader.reset(); } catch {} zxReader = null; }
 }
 
 /* ---------- Lecture d'un code depuis une image ---------- */
 async function readCodeFromImage(file) {
-  if (!('BarcodeDetector' in window)) return toast("Lecture d'image indisponible sur ce navigateur : saisis le numéro à la main.");
-  let bitmap;
-  try { bitmap = await createImageBitmap(file); } catch { return toast('Image impossible à lire.'); }
-  toast("Lecture de l'image…");
-  const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
   let found = null;
-  // On essaie la taille d'origine, puis des versions réduites / agrandies (les captures d'écran sont souvent très grandes)
-  for (const scale of [1, 0.6, 0.35, 1.8]) {
+  if (hasNativeDetector) {
+    let bitmap;
+    try { bitmap = await createImageBitmap(file); } catch { return toast('Image impossible à lire.'); }
+    toast("Lecture de l'image…");
+    const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
+    // On essaie la taille d'origine, puis des versions réduites / agrandies (les captures d'écran sont souvent très grandes)
+    for (const scale of [1, 0.6, 0.35, 1.8]) {
+      try {
+        let src = bitmap;
+        if (scale !== 1) {
+          const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale);
+          if (w < 150 || h < 150 || Math.max(w, h) > 3500) continue;
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          const ctx = cv.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(bitmap, 0, 0, w, h);
+          src = cv;
+        }
+        const res = await detector.detect(src);
+        if (res.length) { found = { raw: res[0].rawValue, isQr: res[0].format === 'qr_code', format: FORMAT_MAP[res[0].format] }; break; }
+      } catch {}
+    }
+    if (bitmap.close) bitmap.close();
+  } else {
+    toast("Lecture de l'image…");
+    const url = URL.createObjectURL(file);
     try {
-      let src = bitmap;
-      if (scale !== 1) {
-        const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale);
-        if (w < 150 || h < 150 || Math.max(w, h) > 3500) continue;
-        const cv = document.createElement('canvas');
-        cv.width = w; cv.height = h;
-        const ctx = cv.getContext('2d');
-        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(bitmap, 0, 0, w, h);
-        src = cv;
-      }
-      const res = await detector.detect(src);
-      if (res.length) { found = res[0]; break; }
+      const ZX = await loadZXing();
+      found = zxResult(await new ZX.BrowserMultiFormatReader().decodeFromImageUrl(url), ZX);
     } catch {}
+    URL.revokeObjectURL(url);
   }
-  if (bitmap.close) bitmap.close();
   if (!found) return toast('Aucun code détecté. Essaie une image plus nette, recadrée sur le code.');
-  const isQr = found.format === 'qr_code';
-  $('codeInput').value = found.rawValue;
-  $('codeTypeInput').value = isQr ? 'qrcode' : 'barcode';
-  scannedFormat = isQr ? null : (FORMAT_MAP[found.format] || null);
-  toggleCodeFields();
-  vibrate(30);
+  applyScanned(found.raw, found.isQr, found.format);
   toast('Code trouvé ✓');
 }
 
@@ -930,6 +1076,14 @@ function maskCode() {
   $('cagnotteCodeShow').setAttribute('aria-label', 'Afficher le code');
   $('cagnotteCodeShow').dataset.shown = '';
 }
+/* PIN de la carte : masqué par défaut */
+function maskPin() {
+  $('pinText').textContent = '••••';
+  setIcon($('pinShow'), 'eye');
+  $('pinShow').dataset.shown = '';
+  $('pinShow').setAttribute('aria-label', 'Afficher le PIN');
+}
+function refreshPinRow(c) { maskPin(); $('pinRow').hidden = !c.pin; }
 const isLegacyCode = c => !!c.cagnotteCode && typeof c.cagnotteCode === 'object';   // ancien format chiffré
 function refreshCodeRow(c) {
   maskCode();
@@ -940,66 +1094,16 @@ function refreshCodeRow(c) {
     $('cagnotteCodeShow').setAttribute('aria-label', 'Convertir les anciens codes');
   }
 }
-async function toggleCode() {
+function toggleCode() {
   const c = cards.find(x => x.id === openedId);
   if (!c || !c.cagnotteCode) return;
   if (isLegacyCode(c)) return convertLegacyCodes();
   const btn = $('cagnotteCodeShow');
   if (btn.dataset.shown === '1') return maskCode();
-  if (!(await lockAuth())) return;
-  if (openedId !== c.id) return;   // la fiche a été fermée pendant la vérification
   $('cagnotteCodeText').textContent = c.cagnotteCode;
-  setIcon(btn, 'eye-off');
+  setIcon(btn, 'eyeOff');
   btn.setAttribute('aria-label', 'Masquer le code');
   btn.dataset.shown = '1';
-}
-
-/* ---------- Verrou biométrique (empreinte, visage ou verrouillage d'écran) ----------
-   Une clé WebAuthn est créée sur l'appareil ; l'affichage d'un code cagnotte demande ensuite de la valider.
-   Rien n'est envoyé sur Internet : c'est un verrou local, qui protège contre quelqu'un qui emprunte le téléphone déverrouillé. */
-const b64enc = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const lockEnabled = () => !!localStorage.getItem(LOCK_KEY);
-function refreshLockUi() {
-  const on = lockEnabled();
-  $('lockTitle').textContent = on ? 'Verrou biométrique activé' : 'Activer le verrou biométrique';
-  $('lockHint').textContent = on ? 'Demandé avant d\'afficher un code cagnotte. Touche pour désactiver.' : 'Demande ton empreinte ou ton visage avant d\'afficher un code cagnotte.';
-}
-async function lockAuth() {
-  const id = localStorage.getItem(LOCK_KEY);
-  if (!id) return true;
-  try {
-    await navigator.credentials.get({ publicKey: {
-      challenge: crypto.getRandomValues(new Uint8Array(32)),
-      allowCredentials: [{ type: 'public-key', id: b64dec(id), transports: ['internal'] }],
-      userVerification: 'required', timeout: 60000
-    } });
-    return true;
-  } catch { toast('Vérification annulée ou impossible.'); return false; }
-}
-async function enableLock() {
-  if (!window.PublicKeyCredential || !navigator.credentials?.create) return toast('Verrou biométrique indisponible sur ce navigateur.');
-  try {
-    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.();
-    if (!available) return toast("Configure d'abord une empreinte, un visage ou un verrouillage d'écran sur ton téléphone.");
-    const cred = await navigator.credentials.create({ publicKey: {
-      rp: { name: 'Mes cartes' },
-      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'mes-cartes', displayName: 'Mes cartes' },
-      challenge: crypto.getRandomValues(new Uint8Array(32)),
-      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
-      timeout: 60000
-    } });
-    localStorage.setItem(LOCK_KEY, b64enc(cred.rawId));
-    toast('Verrou activé ✓');
-  } catch { toast('Activation annulée.'); }
-  refreshLockUi();
-}
-async function toggleLock() {
-  if (!lockEnabled()) return enableLock();
-  if (!(await lockAuth())) return;   // on doit valider pour désactiver
-  localStorage.removeItem(LOCK_KEY);
-  toast('Verrou désactivé');
-  refreshLockUi();
 }
 
 /* ---------- Anciens codes protégés : conversion unique ----------
@@ -1060,6 +1164,22 @@ async function convertLegacyCodes() {
 }
 
 /* ---------- Sauvegarde (export / import) ---------- */
+/* Rappel de sauvegarde : jamais sauvegardé (cartes de plus de 7 jours) ou dernière sauvegarde de plus de 30 jours */
+function updateBackupInfo() {
+  const t = Number(localStorage.getItem(BACKUP_KEY)) || 0;
+  const age = t ? Math.floor((Date.now() - t) / 864e5) : null;
+  $('backupNote').textContent = age === null ? 'Aucune sauvegarde faite sur cet appareil.'
+    : age === 0 ? "Dernière sauvegarde : aujourd'hui." : `Dernière sauvegarde : il y a ${age} jour${age > 1 ? 's' : ''}.`;
+  let show = false;
+  if (cards.length) {
+    const oldest = Math.min(...cards.map(c => c.createdAt || 0));
+    const cardAge = Math.floor((Date.now() - oldest) / 864e5);
+    show = age === null ? cardAge >= 7 : age >= 30;
+    if (Number(localStorage.getItem(SNOOZE_KEY)) > Date.now()) show = false;
+  }
+  $('backupBanner').hidden = !show;
+  if (show) $('backupText').textContent = age === null ? "Tes cartes ne sont pas sauvegardées." : `Dernière sauvegarde il y a ${age} jours.`;
+}
 function exportCards() {
   if (!cards.length) return toast('Aucune carte à exporter.');
   const payload = { app: 'mes-cartes', version: 4, exportedAt: new Date().toISOString(), cards };
@@ -1067,6 +1187,8 @@ function exportCards() {
   const a = el('a', { href: URL.createObjectURL(blob), download: `mes-cartes-${new Date().toISOString().slice(0, 10)}.json` });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  try { localStorage.setItem(BACKUP_KEY, String(Date.now())); localStorage.removeItem(SNOOZE_KEY); } catch {}
+  updateBackupInfo();
   toast('Sauvegarde téléchargée ✓');
 }
 async function importCards(file) {
@@ -1075,8 +1197,14 @@ async function importCards(file) {
     const list = Array.isArray(data) ? data : data.cards;
     if (!Array.isArray(list)) throw new Error('format');
     const known = new Set(cards.map(c => c.id));
-    const added = list.filter(c => c && typeof c.name === 'string' && c.name && !known.has(c.id))
-      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && c.kind !== 'loyalty' && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty'), cagnotteCode: typeof c.cagnotteCode === 'string' ? c.cagnotteCode.slice(0, 60) : undefined }));
+    const sig = c => `${norm(c.name)}|${c.code}`;
+    const sigs = new Set(cards.filter(c => c.code).map(sig));
+    const added = list.filter(c => {
+      if (!c || typeof c.name !== 'string' || !c.name || known.has(c.id)) return false;
+      if (c.code) { const k = sig(c); if (sigs.has(k)) return false; sigs.add(k); }   // même nom + même numéro = doublon
+      return true;
+    })
+      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && c.kind !== 'loyalty' && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty'), cagnotteCode: typeof c.cagnotteCode === 'string' ? c.cagnotteCode.slice(0, 60) : undefined, expires: /^\d{4}-\d{2}-\d{2}$/.test(c.expires || '') ? c.expires : undefined, pin: typeof c.pin === 'string' ? c.pin.slice(0, 20) : undefined }));
     const backup = JSON.stringify(cards);
     cards.push(...added);
     ensureOrder();
@@ -1104,18 +1232,12 @@ $('sortSelect').addEventListener('change', e => {
   render();
 });
 $('reorderButton').addEventListener('click', () => setReorder(!reorderMode));
-$('viewButton').addEventListener('click', () => {
-  viewMode = viewMode === 'list' ? 'grid' : 'list';
-  localStorage.setItem(VIEW_KEY, viewMode);
-  render();
-});
 $('reorderDone').addEventListener('click', () => setReorder(false));
 $('cardsGrid').addEventListener('pointerdown', onGridPointerDown);
 $('cardsGrid').addEventListener('contextmenu', e => { if (reorderMode) e.preventDefault(); });
 $('imageButton').addEventListener('click', () => $('imageInput').click());
 $('imageInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await readCodeFromImage(f); e.target.value = ''; });
 $('forceUpdateButton').addEventListener('click', forceUpdate);
-$('lockButton').addEventListener('click', toggleLock);
 $('cagnotteCodeShow').addEventListener('click', toggleCode);
 $('cagnotteCodeEye').addEventListener('click', () => $('cagnotteCodeInput').classList.toggle('masked'));
 $('removeCagnotteCode').addEventListener('click', () => {
@@ -1149,7 +1271,13 @@ $('logoPreview').addEventListener('click', () => $('logoInput').click());
 $('logoInput').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
-  try { selectedLogo = await resizeLogo(file); updateLogoPreview(); toast('Logo ajouté ✓'); }
+  try {
+    selectedLogo = await resizeLogo(file);
+    const col = selectedColor === COLORS[0] ? await dominantColor(selectedLogo) : null;
+    if (col) { selectedColor = col; renderColors(); }
+    updateLogoPreview();
+    toast(col ? 'Logo ajouté, couleur reprise ✓' : 'Logo ajouté ✓');
+  }
   catch { toast('Image impossible à utiliser.'); }
   e.target.value = '';
 });
@@ -1214,6 +1342,58 @@ $('deleteCard').addEventListener('click', () => {
 $('scanButton').addEventListener('click', openScanner);
 $('closeScanner').addEventListener('click', closeLayer);
 
+/* ---------- v5 : recherche repliée, vue, rappel, PIN, menu ⋯, glisser pour fermer ---------- */
+$('searchToggle').addEventListener('click', () => {
+  const box = $('searchBox');
+  if (box.hidden) { box.hidden = false; $('searchInput').focus(); }
+  else { $('searchInput').value = ''; box.hidden = true; render(); }
+});
+$('viewButton').addEventListener('click', () => {
+  viewMode = viewMode === 'list' ? 'grid' : 'list';
+  localStorage.setItem(VIEW_KEY, viewMode);
+  render();
+});
+$('backupNow').addEventListener('click', exportCards);
+$('backupLater').addEventListener('click', () => {
+  try { localStorage.setItem(SNOOZE_KEY, String(Date.now() + 7 * 864e5)); } catch {}
+  $('backupBanner').hidden = true;
+});
+['nameInput', 'categoryInput', 'balanceInput', 'expiryInput', 'codeTypeInput'].forEach(id => $(id).addEventListener('input', updatePreview));
+$('pinEye').addEventListener('click', () => $('pinInput').classList.toggle('masked'));
+$('pinShow').addEventListener('click', () => {
+  const c = cards.find(x => x.id === openedId);
+  if (!c || !c.pin) return;
+  const b = $('pinShow');
+  if (b.dataset.shown === '1') return maskPin();
+  $('pinText').textContent = c.pin;
+  setIcon(b, 'eyeOff');
+  b.setAttribute('aria-label', 'Masquer le PIN');
+  b.dataset.shown = '1';
+});
+$('moreCard').addEventListener('click', e => { e.stopPropagation(); $('detailMenu').hidden = !$('detailMenu').hidden; });
+$('detailPanel').addEventListener('click', () => { $('detailMenu').hidden = true; });
+/* Glisser la fiche vers le bas pour la fermer */
+let swipe = null;
+$('detailHero').addEventListener('touchstart', e => {
+  if ($('detailPanel').scrollTop > 0 || e.touches.length !== 1) return;
+  swipe = { y: e.touches[0].clientY, dy: 0 };
+}, { passive: true });
+$('detailHero').addEventListener('touchmove', e => {
+  if (!swipe) return;
+  swipe.dy = Math.max(0, e.touches[0].clientY - swipe.y);
+  const p = $('detailPanel');
+  p.style.transition = 'none';
+  p.style.transform = `translateY(${swipe.dy}px)`;
+}, { passive: true });
+$('detailHero').addEventListener('touchend', () => {
+  if (!swipe) return;
+  const p = $('detailPanel'), far = swipe.dy > 110;
+  swipe = null;
+  p.style.transition = 'transform .2s ease';
+  p.style.transform = '';
+  if (far) closeLayer();
+});
+
 /* ---------- Raccourcis du manifest (appui long sur l'icône) ---------- */
 function handleLaunchAction() {
   const action = new URLSearchParams(location.search).get('action');
@@ -1235,9 +1415,9 @@ $('categoryInput').replaceChildren(
   el('option', { value: '', text: 'Aucune catégorie' }),
   ...CATEGORIES.map(c => el('option', { value: c.id, text: `${c.emoji} ${c.name}` }))
 );
-document.querySelectorAll('[data-icon]').forEach(n => n.insertAdjacentHTML('afterbegin', ic(n.dataset.icon)));
 $('versionNote').textContent = `Version ${APP_VERSION}`;
-refreshLockUi();
+paintIcons();
+renderTemplates();
 load();
 if (!cards.some(isLegacyCode)) localStorage.removeItem(VAULT_KEY);
 render();

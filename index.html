@@ -21,22 +21,25 @@
     <p class="subtitle" id="cardCount">0 carte</p>
   </div>
   <div class="top-actions">
-    <button class="round-button" id="themeButton" data-icon="palette" aria-label="Choisir le thème"></button>
-    <button class="round-button" id="menuButton" data-icon="sliders" aria-label="Sauvegarde et réglages"></button>
+    <button class="round-button" id="searchToggle" type="button" aria-label="Rechercher" data-icon="search"></button>
+    <button class="round-button" id="themeButton" type="button" aria-label="Choisir le thème" data-icon="palette"></button>
+    <button class="round-button" id="menuButton" type="button" aria-label="Sauvegarde et réglages" data-icon="sliders"></button>
   </div>
 </header>
 
 <main>
-  <label class="search-box" for="searchInput">
-    <span data-icon="search" aria-hidden="true"></span>
+  <label class="search-box" id="searchBox" for="searchInput" hidden>
+    <span aria-hidden="true" data-icon="search"></span>
     <input id="searchInput" type="search" placeholder="Rechercher une carte" autocomplete="off">
   </label>
-
-  <div class="tabs" id="tabs" role="tablist">
-    <button class="tab active" id="tabLoyalty" role="tab" aria-selected="true" type="button">Cartes de fidélité <span id="countLoyalty">0</span></button>
-    <button class="tab" id="tabGift" role="tab" aria-selected="false" type="button">Cartes cadeaux <span id="countGift">0</span></button>
-  </div>
   <button class="other-hint" id="otherHint" type="button" hidden></button>
+
+  <section class="backup-banner" id="backupBanner" hidden>
+    <span data-icon="download" aria-hidden="true"></span>
+    <div><strong id="backupText">Pense à sauvegarder.</strong><small>Un fichier suffit pour tout retrouver si tu changes de téléphone.</small></div>
+    <button class="text-button" id="backupNow" type="button">Sauvegarder</button>
+    <button class="banner-close" id="backupLater" type="button" aria-label="Me le rappeler plus tard">×</button>
+  </section>
 
   <div class="toolbar" id="toolbar">
     <div class="filter-row" id="filterRow" aria-label="Filtres"></div>
@@ -47,10 +50,8 @@
         <option value="az">A → Z</option>
         <option value="manual">Mon ordre</option>
       </select>
-      <div class="sort-actions">
-        <button class="chip" id="reorderButton" type="button" data-icon="reorder">Réorganiser</button>
-        <button class="chip icon-chip" id="viewButton" type="button" aria-label="Passer en affichage liste"></button>
-      </div>
+      <button class="chip" id="reorderButton" type="button">↕ Réorganiser</button>
+      <button class="chip" id="viewButton" type="button" aria-label="Changer l'affichage"></button>
     </div>
   </div>
   <div class="reorder-bar" id="reorderBar" hidden>
@@ -59,24 +60,25 @@
   </div>
 
   <section class="quick-guide" id="quickGuide">
-    <span class="guide-ic" data-icon="bulb" aria-hidden="true"></span>
+    <span data-icon="bolt" aria-hidden="true"></span>
     <div>
       <strong>Ajoute une carte en quelques secondes</strong>
       <small>Scanne le code avec l'appareil photo, ou tape le numéro.</small>
     </div>
-    <button id="hideGuide" type="button" data-icon="x" aria-label="Masquer l'aide"></button>
+    <button id="hideGuide" type="button" aria-label="Masquer l'aide">×</button>
   </section>
+
+  <button class="last-banner" id="lastBanner" type="button" hidden></button>
 
   <section id="cardsGrid" class="cards-grid" aria-label="Mes cartes"></section>
 
   <section id="emptyState" class="empty-state" hidden>
-    <svg class="empty-art" viewBox="0 0 160 124" aria-hidden="true">
-      <rect class="a" x="36" y="10" width="92" height="58" rx="11" transform="rotate(-9 82 39)"/>
-      <rect class="b" x="30" y="28" width="100" height="62" rx="12" transform="rotate(5 80 59)"/>
-      <rect class="c" x="24" y="46" width="112" height="68" rx="13"/>
-      <rect class="e" x="38" y="62" width="26" height="19" rx="5"/>
-      <rect class="d" x="38" y="92" width="52" height="7" rx="3.5"/>
-      <rect class="d" x="98" y="92" width="24" height="7" rx="3.5"/>
+    <svg class="empty-art" viewBox="0 0 160 120" aria-hidden="true">
+      <rect x="34" y="22" width="92" height="58" rx="10" transform="rotate(-8 80 51)" fill="var(--soft)" stroke="var(--line)" stroke-width="2"/>
+      <rect x="30" y="36" width="100" height="62" rx="11" fill="var(--accent)" opacity=".92"/>
+      <rect x="30" y="50" width="100" height="12" fill="#00000030"/>
+      <circle cx="50" cy="82" r="7" fill="#ffffffcc"/><circle cx="60" cy="82" r="7" fill="#ffffff80"/>
+      <rect x="86" y="76" width="30" height="5" rx="2.5" fill="#ffffffcc"/><rect x="86" y="85" width="18" height="5" rx="2.5" fill="#ffffff80"/>
     </svg>
     <h2 id="emptyTitle">Aucune carte</h2>
     <p id="emptyText">Ajoute ta première carte de fidélité pour la retrouver en caisse, même sans réseau.</p>
@@ -84,7 +86,15 @@
   </section>
 </main>
 
-<button class="add-button" id="addButton" type="button" data-icon="plus"><span id="addLabel">Ajouter une carte</span></button>
+<nav class="bottom-nav" role="tablist" aria-label="Types de cartes">
+  <button class="nav-tab active" id="tabLoyalty" role="tab" aria-selected="true" type="button">
+    <span class="nav-ic" data-icon="card" aria-hidden="true"></span><span class="nav-label">Fidélité</span><span class="nav-count" id="countLoyalty">0</span>
+  </button>
+  <button class="nav-add" id="addButton" type="button" aria-label="Ajouter une carte" data-icon="plus"></button>
+  <button class="nav-tab" id="tabGift" role="tab" aria-selected="false" type="button">
+    <span class="nav-ic" data-icon="gift" aria-hidden="true"></span><span class="nav-label">Cadeaux</span><span class="nav-count" id="countGift">0</span>
+  </button>
+</nav>
 
 <!-- Formulaire -->
 <div class="backdrop" id="formBackdrop" hidden></div>
@@ -92,7 +102,7 @@
   <div class="handle"></div>
   <div class="sheet-title">
     <h2 id="formTitle">Nouvelle carte</h2>
-    <button class="close-button" id="closeForm" type="button" data-icon="x" aria-label="Fermer"></button>
+    <button class="close-button" id="closeForm" type="button" aria-label="Fermer">×</button>
   </div>
   <form id="cardForm" autocomplete="off">
     <div class="segmented" id="kindSwitch" role="radiogroup" aria-label="Type de carte">
@@ -100,8 +110,15 @@
       <button type="button" class="seg" data-kind="gift">Cadeau</button>
     </div>
 
+    <div class="form-preview" id="formPreview" aria-label="Aperçu de la carte"></div>
+
+    <div class="templates-wrap" id="templates">
+      <span class="form-label">Magasins courants</span>
+      <div class="chips" id="templateList"></div>
+    </div>
+
     <div class="logo-upload">
-      <button type="button" class="logo-preview" id="logoPreview" aria-label="Choisir un logo"></button>
+      <button type="button" class="logo-preview" id="logoPreview" aria-label="Choisir un logo" data-icon="store"></button>
       <div>
         <strong>Logo du magasin</strong>
         <p>Une image depuis ta galerie.</p>
@@ -125,35 +142,49 @@
         <label class="form-label" for="cagnotteCodeInput">Code cagnotte (facultatif)</label>
         <div class="code-row">
           <input class="form-input masked" id="cagnotteCodeInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Saisis le code">
-          <button class="scan-button" id="cagnotteCodeEye" type="button" data-icon="eye" aria-label="Afficher ou masquer la saisie"></button>
+          <button class="scan-button" id="cagnotteCodeEye" type="button" aria-label="Afficher ou masquer la saisie" data-icon="eye"></button>
         </div>
         <button class="text-button danger" id="removeCagnotteCode" type="button" hidden>Retirer le code enregistré</button>
-        <p class="field-hint">Visible sur la fiche de la carte avec le bouton œil.</p>
+        <p class="field-hint">Visible sur la fiche de la carte avec le bouton « œil ».</p>
       </div>
     </div>
 
-    <label class="form-label" for="codeTypeInput">Type de code</label>
-    <select class="form-input" id="codeTypeInput">
-      <option value="barcode">Code-barres</option>
-      <option value="qrcode">QR code</option>
-      <option value="none">Aucun code</option>
-    </select>
+    <div id="expiryWrap" hidden>
+      <label class="form-label" for="expiryInput">Date d'expiration (facultatif)</label>
+      <input class="form-input" id="expiryInput" type="date">
+    </div>
 
     <div id="codeFields">
       <label class="form-label" for="codeInput">Numéro de carte</label>
       <div class="code-row">
         <input class="form-input" id="codeInput" inputmode="text" placeholder="Saisis le numéro">
-        <button class="scan-button" id="scanButton" type="button" data-icon="scan" aria-label="Scanner avec l'appareil photo"></button>
-        <button class="scan-button" id="imageButton" type="button" data-icon="image" aria-label="Lire le code depuis une image"></button>
+        <button class="scan-button" id="scanButton" type="button" aria-label="Scanner avec l'appareil photo" data-icon="camera"></button>
+        <button class="scan-button" id="imageButton" type="button" aria-label="Lire le code depuis une image" data-icon="image"></button>
         <input id="imageInput" type="file" accept="image/*" hidden>
       </div>
     </div>
 
-    <label class="form-label" for="notesInput">Note (facultatif)</label>
-    <textarea class="form-input" id="notesInput" maxlength="300" placeholder="Ex. Code PIN, avantages, date de fin…"></textarea>
-
     <span class="form-label">Couleur de la carte</span>
     <div class="color-row" id="colorRow"></div>
+
+    <details class="advanced" id="advanced">
+      <summary>Options avancées</summary>
+      <label class="form-label" for="codeTypeInput">Type de code</label>
+      <select class="form-input" id="codeTypeInput">
+        <option value="barcode">Code-barres</option>
+        <option value="qrcode">QR code</option>
+        <option value="none">Aucun code</option>
+      </select>
+
+      <label class="form-label" for="pinInput">Code PIN (facultatif)</label>
+      <div class="code-row">
+        <input class="form-input masked" id="pinInput" type="text" inputmode="numeric" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Ex. 1234">
+        <button class="scan-button" id="pinEye" type="button" aria-label="Afficher ou masquer la saisie" data-icon="eye"></button>
+      </div>
+
+      <label class="form-label" for="notesInput">Note (facultatif)</label>
+      <textarea class="form-input" id="notesInput" maxlength="300" placeholder="Ex. avantages, date de fin…"></textarea>
+    </details>
 
     <div class="form-actions">
       <button class="secondary-button" id="cancelForm" type="button">Annuler</button>
@@ -168,7 +199,7 @@
   <div class="handle"></div>
   <div class="sheet-title">
     <h2>Choisir un thème</h2>
-    <button class="close-button" id="closeTheme" type="button" data-icon="x" aria-label="Fermer"></button>
+    <button class="close-button" id="closeTheme" type="button" aria-label="Fermer">×</button>
   </div>
   <div class="theme-list" id="themeList"></div>
 </section>
@@ -179,35 +210,32 @@
   <div class="handle"></div>
   <div class="sheet-title">
     <h2>Sauvegarde et réglages</h2>
-    <button class="close-button" id="closeMenu" type="button" data-icon="x" aria-label="Fermer"></button>
+    <button class="close-button" id="closeMenu" type="button" aria-label="Fermer">×</button>
   </div>
   <div class="menu-list">
     <button class="menu-item" id="exportButton" type="button">
-      <span class="menu-icon" data-icon="upload" aria-hidden="true"></span>
+      <span class="menu-icon" aria-hidden="true" data-icon="upload"></span>
       <span><strong>Exporter mes cartes</strong><small>Télécharge un fichier de sauvegarde</small></span>
     </button>
     <button class="menu-item" id="importButton" type="button">
-      <span class="menu-icon" data-icon="download" aria-hidden="true"></span>
-      <span><strong>Importer une sauvegarde</strong><small>Ajoute les cartes d'un fichier exporté</small></span>
-    </button>
-    <button class="menu-item" id="lockButton" type="button">
-      <span class="menu-icon" data-icon="lock" aria-hidden="true"></span>
-      <span><strong id="lockTitle">Activer le verrou biométrique</strong><small id="lockHint"></small></span>
+      <span class="menu-icon" aria-hidden="true" data-icon="download"></span>
+      <span><strong>Importer une sauvegarde</strong><small>Ajoute les cartes d'un fichier exporté (sans doublons)</small></span>
     </button>
     <button class="menu-item" id="installButton" type="button" hidden>
-      <span class="menu-icon" data-icon="phone" aria-hidden="true"></span>
+      <span class="menu-icon" aria-hidden="true" data-icon="phone"></span>
       <span><strong>Installer l'application</strong><small>Ajoute-la à ton écran d'accueil</small></span>
     </button>
     <button class="menu-item" id="forceUpdateButton" type="button">
-      <span class="menu-icon" data-icon="refresh" aria-hidden="true"></span>
+      <span class="menu-icon" aria-hidden="true" data-icon="refresh"></span>
       <span><strong>Forcer la mise à jour</strong><small>Recharge la dernière version, sans toucher à tes cartes</small></span>
     </button>
     <button class="menu-item" id="showGuideButton" type="button">
-      <span class="menu-icon" data-icon="bulb" aria-hidden="true"></span>
+      <span class="menu-icon" aria-hidden="true" data-icon="bolt"></span>
       <span><strong>Réafficher l'aide</strong><small>Le bandeau de démarrage</small></span>
     </button>
   </div>
   <input id="importInput" type="file" accept="application/json,.json" hidden>
+  <p class="menu-note" id="backupNote"></p>
   <p class="menu-note">Tes cartes sont enregistrées uniquement sur cet appareil. Si tu changes de téléphone ou effaces les données du navigateur, elles disparaissent : exporte une sauvegarde de temps en temps.</p>
   <p class="menu-note" id="versionNote"></p>
 </section>
@@ -215,40 +243,38 @@
 <!-- Fiche carte -->
 <div class="backdrop" id="detailBackdrop" hidden></div>
 <section class="detail-panel" id="detailPanel" hidden aria-label="Détail de la carte">
-  <div class="pass-head">
+  <div class="detail-hero" id="detailHero">
     <div class="detail-toolbar">
-      <button class="close-button" id="closeDetail" type="button" data-icon="x" aria-label="Fermer"></button>
+      <button class="close-button" id="closeDetail" type="button" aria-label="Fermer" data-icon="close"></button>
       <div class="detail-actions">
-        <button class="tool-button" id="favCard" type="button" data-icon="star" aria-label="Favori"></button>
-        <button class="tool-button" id="editCard" type="button" data-icon="edit" aria-label="Modifier"></button>
-        <button class="tool-button" id="deleteCard" type="button" data-icon="trash" aria-label="Supprimer"></button>
+        <button class="tool-button" id="favCard" type="button" aria-label="Favori" data-icon="star"></button>
+        <button class="tool-button" id="moreCard" type="button" aria-label="Plus d'actions" data-icon="more"></button>
       </div>
     </div>
-    <div class="detail-id">
-      <div class="detail-logo" id="detailLogo"></div>
-      <div>
-        <h2 id="detailName"></h2>
-        <p class="detail-type" id="detailType"></p>
-      </div>
+    <div class="detail-menu" id="detailMenu" hidden>
+      <button id="editCard" type="button"><span data-icon="edit" aria-hidden="true"></span>Modifier</button>
+      <button class="danger" id="deleteCard" type="button"><span data-icon="trash" aria-hidden="true"></span>Supprimer</button>
     </div>
+    <div class="detail-logo" id="detailLogo"></div>
+    <h2 id="detailName"></h2>
+    <p class="detail-type" id="detailType"></p>
+    <div class="detail-meta" id="detailMeta" hidden></div>
   </div>
 
-  <div class="pass-body">
-    <div class="detail-meta" id="detailMeta" hidden></div>
-
+  <div class="detail-body">
     <div class="cagnotte-box" id="cagnotteBox" hidden>
       <div class="cagnotte-view" id="cagnotteView">
         <div><small>Cagnotte</small><strong id="cagnotteValue">0,00 €</strong></div>
-        <button class="tool-button" id="cagnotteEdit" type="button" data-icon="edit" aria-label="Modifier la cagnotte"></button>
+        <button class="tool-button" id="cagnotteEdit" type="button" aria-label="Modifier la cagnotte" data-icon="edit"></button>
       </div>
       <div class="cagnotte-code" id="cagnotteCodeRow" hidden>
         <div class="code-info"><span class="code-label">Code cagnotte</span><strong id="cagnotteCodeText">••••••</strong></div>
-        <button class="tool-button" id="cagnotteCodeShow" type="button" data-icon="eye" aria-label="Afficher le code"></button>
+        <button class="tool-button" id="cagnotteCodeShow" type="button" aria-label="Afficher le code" data-icon="eye"></button>
       </div>
       <div class="cagnotte-editor" id="cagnotteEditor" hidden>
         <input class="form-input" id="cagnotteInput" inputmode="decimal" placeholder="Nouveau montant (€)" aria-label="Nouveau montant de la cagnotte">
-        <button class="tool-button ok" id="cagnotteSave" type="button" data-icon="check" aria-label="Valider"></button>
-        <button class="tool-button" id="cagnotteCancel" type="button" data-icon="x" aria-label="Annuler"></button>
+        <button class="tool-button ok" id="cagnotteSave" type="button" aria-label="Valider" data-icon="check"></button>
+        <button class="tool-button" id="cagnotteCancel" type="button" aria-label="Annuler" data-icon="close"></button>
       </div>
     </div>
 
@@ -257,6 +283,7 @@
         <div><small id="balanceCaption">Solde restant</small><strong id="balanceValue">0,00 €</strong></div>
         <button class="text-button" id="toggleHistory" type="button">Historique</button>
       </div>
+      <div class="progress" aria-hidden="true"><span id="balanceBar"></span></div>
       <div class="balance-form">
         <input class="form-input" id="amountInput" inputmode="decimal" placeholder="Montant (€)" aria-label="Montant">
         <input class="form-input" id="amountNote" maxlength="40" placeholder="Note (facultatif)" aria-label="Note">
@@ -276,6 +303,12 @@
       <p class="code-hint" id="codeHint">Touche pour agrandir</p>
     </div>
     <div class="copy-row"><button class="text-button" id="copyCode" type="button" hidden>Copier le numéro</button></div>
+
+    <div class="cagnotte-code pin-row" id="pinRow" hidden>
+      <div class="code-info"><span class="code-label">Code PIN</span><strong id="pinText">••••</strong></div>
+      <button class="tool-button" id="pinShow" type="button" aria-label="Afficher le PIN" data-icon="eye"></button>
+    </div>
+
     <p class="detail-notes" id="detailNotes" hidden></p>
     <button class="primary-button wide" id="closeDetailButton" type="button">Terminer</button>
   </div>
@@ -285,7 +318,7 @@
 <section class="scanner" id="scanner" hidden aria-label="Scanner">
   <div class="scanner-head">
     <strong>Scanner le code</strong>
-    <button id="closeScanner" type="button">Fermer</button>
+    <button id="closeScanner" type="button">Fermer ×</button>
   </div>
   <div class="scan-wrap">
     <video id="scanVideo" autoplay playsinline muted></video>
