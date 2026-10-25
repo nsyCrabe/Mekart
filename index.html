@@ -195,13 +195,12 @@
   </form>
 </section>
 
-<!-- Thèmes -->
-<div class="backdrop" id="themeBackdrop" hidden></div>
-<section class="sheet" id="themeSheet" hidden aria-label="Thème">
-  <div class="handle"></div>
-  <div class="sheet-title">
-    <h2>Personnaliser</h2>
-    <button class="close-button" id="closeTheme" type="button" aria-label="Fermer">×</button>
+<!-- Personnaliser (barre basse : l'app reste visible au-dessus) -->
+<section class="sheet dock" id="themeSheet" hidden aria-label="Personnaliser">
+  <div class="dock-head">
+    <button class="text-button" id="themeCancel" type="button">Annuler</button>
+    <div class="segmented dock-tabs" id="themeTabs" role="tablist"></div>
+    <button class="dock-done" id="themeDone" type="button">Terminer</button>
   </div>
   <div class="theme-list" id="themeList"></div>
   <input id="wpInput" type="file" accept="image/*" hidden>

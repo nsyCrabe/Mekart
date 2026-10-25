@@ -8,7 +8,7 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
-const APP_VERSION = '5.2';
+const APP_VERSION = '5.3';
 const VIEW_KEY = 'loyalty_view_v1';
 const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
@@ -50,6 +50,19 @@ const ACCENTS = ['#3b6ef0', '#7c4dff', '#e0407f', '#ee5a3c', '#f59e0b', '#1f9254
 let theme = { ...DEFAULT_THEME };
 let wallpaper = null;
 let themeTab = 'colors';
+let themeTarget = 'accent';
+let themeAdv = false;
+let themeSnap = null;
+let flashT = null, persistT = null;
+const COLORS_KEY = 'loyalty_colors_v1';
+let savedColors = [];   // [{ hex, name }]
+const TARGETS = [
+  { key: 'accent', label: 'Principale', desc: 'Boutons, onglets, détails', adv: false },
+  { key: 'bg', label: 'Fond', desc: "Arrière-plan de l'app", adv: false, auto: true },
+  { key: 'accent2', label: 'Dégradé', desc: 'Seconde couleur des boutons', adv: true, auto: true },
+  { key: 'surface', label: 'Surfaces', desc: 'Barre du bas, fenêtres, champs', adv: true, auto: true },
+  { key: 'text', label: 'Texte', desc: 'Titres et textes', adv: true, auto: true }
+];
 
 const $ = id => document.getElementById(id);
 
@@ -181,6 +194,7 @@ function load() {
   cards.forEach(c => { c.kind = kindOf(c); });
   tab = localStorage.getItem(TAB_KEY) === 'gift' ? 'gift' : 'loyalty';
   loadTheme();
+  loadSavedColors();
   sortMode = localStorage.getItem(SORT_KEY) || 'recent';
   if (!['recent', 'used', 'az', 'manual'].includes(sortMode)) sortMode = 'recent';
   viewMode = localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid';
@@ -252,95 +266,258 @@ function setThemeKey(patch, rerender = false) {
   applyTheme();
   if (rerender) renderThemes();
 }
-function colorField(label, key, hint, canAuto) {
-  const input = el('input', { type: 'color', value: computeTheme()[key], 'aria-label': label });
-  input.addEventListener('input', () => { theme[key] = input.value; persistTheme(); applyTheme(); });
-  input.addEventListener('change', renderThemes);
-  const auto = canAuto && theme[key] === null;
-  const row = el('div', { class: 'color-field' },
-    el('span', { class: 'cf-input' }, input),
-    el('span', { class: 'cf-label' }, el('strong', { text: label }), el('small', { text: auto ? 'Automatique' : hint })));
-  if (canAuto && !auto) {
-    const b = el('button', { type: 'button', class: 'chip small', text: 'Auto' });
-    b.addEventListener('click', () => setThemeKey({ [key]: null }, true));
-    row.append(b);
+/* ----- Conversions de couleurs ----- */
+const hexToRgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const rgbToHex = (r, g, b) => '#' + [r, g, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+function hexToHsv(hex) {
+  const [r, g, b] = hexToRgb(hex).map(v => v / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) { if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+  return { h, s: mx ? d / mx : 0, v: mx };
+}
+function hsvToHex(h, s, v) {
+  const f = n => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+  return rgbToHex(f(5) * 255, f(3) * 255, f(1) * 255);
+}
+const shadeList = base => [0.8, 0.6, 0.4, 0.2].map(t => mixHex(base, '#ffffff', t)).concat([base], [0.2, 0.4, 0.55, 0.7].map(t => mixHex(base, '#000000', t)));
+
+/* ----- Mes couleurs (palette enregistrée, partagée avec les cartes) ----- */
+function loadSavedColors() {
+  try {
+    const a = JSON.parse(localStorage.getItem(COLORS_KEY) || '[]');
+    savedColors = Array.isArray(a) ? a.filter(c => c && isHex(c.hex)).map(c => ({ hex: c.hex.toLowerCase(), name: String(c.name || '').slice(0, 24) })).slice(0, 36) : [];
+  } catch { savedColors = []; }
+}
+function persistSavedColors() { try { localStorage.setItem(COLORS_KEY, JSON.stringify(savedColors)); return true; } catch { return false; } }
+function addSavedColor(hex) {
+  hex = hex.toLowerCase();
+  if (savedColors.some(c => c.hex === hex)) { toast('Cette couleur est déjà enregistrée.'); return false; }
+  if (savedColors.length >= 36) { toast('36 couleurs enregistrées au maximum.'); return false; }
+  const name = prompt('Nom de la couleur (facultatif)');
+  if (name === null) return false;
+  savedColors.push({ hex, name: name.trim().slice(0, 24) });
+  persistSavedColors();
+  toast('Couleur enregistrée ✓');
+  return true;
+}
+
+/* ----- Sélecteur de couleur intégré (aucune fenêtre par-dessus l'app) ----- */
+function buildPicker(value, onChange) {
+  let { h, s, v } = hexToHsv(value);
+  let curHex = value, anchor = value, dragging = false;
+  const sv = el('div', { class: 'cp-sv', 'aria-label': 'Saturation et luminosité' });
+  const thumb = el('div', { class: 'cp-thumb' });
+  sv.append(thumb);
+  const hue = el('input', { type: 'range', min: 0, max: 360, step: 1, value: Math.round(h), class: 'cp-hue', 'aria-label': 'Teinte' });
+  const swatch = el('span', { class: 'cp-cur' });
+  const hex = el('input', { class: 'form-input cp-hex', type: 'text', maxlength: 7, autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Code couleur' });
+  const saveBtn = el('button', { type: 'button', class: 'chip small cp-save' });
+  const shadeRow = el('div', { class: 'cp-shades', role: 'group', 'aria-label': 'Nuances' });
+  const shadeBtns = Array.from({ length: 9 }, () => { const b = el('button', { type: 'button' }); shadeRow.append(b); return b; });
+  const saved = el('div', { class: 'cp-saved-wrap' });
+
+  function paintSaved() {
+    const hit = savedColors.find(x => x.hex === curHex);
+    const kids = [];
+    if (hit) {
+      const rn = el('button', { type: 'button', class: 'text-button', text: 'Renommer' });
+      rn.addEventListener('click', () => {
+        const n = prompt('Nom de la couleur', hit.name);
+        if (n === null) return;
+        hit.name = n.trim().slice(0, 24); persistSavedColors(); paintSaved();
+      });
+      const del = el('button', { type: 'button', class: 'text-button danger', text: 'Supprimer' });
+      del.addEventListener('click', () => {
+        if (!confirm('Supprimer cette couleur enregistrée ?')) return;
+        savedColors = savedColors.filter(x => x !== hit); persistSavedColors(); paint();
+      });
+      kids.push(el('div', { class: 'cp-manage' }, el('span', { text: hit.name ? `★ « ${hit.name} »` : '★ Couleur enregistrée' }), rn, del));
+    }
+    if (savedColors.length) {
+      const dots = el('div', { class: 'cp-saved', role: 'group', 'aria-label': 'Mes couleurs' });
+      savedColors.forEach(x => {
+        const d = el('button', { type: 'button', class: `color-dot${x.hex === curHex ? ' selected' : ''}`, 'aria-label': x.name || `Couleur ${x.hex}`, title: x.name || x.hex });
+        d.style.background = x.hex;
+        d.addEventListener('click', () => setHex(x.hex));
+        dots.append(d);
+      });
+      kids.push(dots);
+    }
+    saved.replaceChildren(...kids);
   }
-  return row;
+  function paint(o = {}) {
+    const c = curHex;
+    thumb.style.left = (s * 100) + '%';
+    thumb.style.top = ((1 - v) * 100) + '%';
+    sv.style.backgroundColor = hsvToHex(h, 1, 1);
+    if (o.skip !== 'hue') hue.value = Math.round(h);
+    swatch.style.background = c;
+    if (o.skip !== 'hex') hex.value = c.toUpperCase();
+    shadeList(anchor).forEach((x, i) => {
+      shadeBtns[i].style.background = x; shadeBtns[i].dataset.hex = x;
+      shadeBtns[i].classList.toggle('on', x === c);
+      shadeBtns[i].setAttribute('aria-label', `Nuance ${x}`);
+    });
+    const hit = savedColors.some(x => x.hex === c);
+    saveBtn.textContent = hit ? '★ Enregistrée' : '☆ Enregistrer';
+    saveBtn.classList.toggle('active', hit);
+    if (!o.drag) paintSaved();
+  }
+  function setHex(x, o = {}) {
+    const n = hexToHsv(x);
+    if (n.s > 0 && n.v > 0) h = n.h;
+    s = n.s; v = n.v; curHex = x;
+    if (!o.keepAnchor) anchor = x;
+    paint(o.skip ? { skip: o.skip } : {});
+    onChange(curHex);
+  }
+  const move = e => {
+    const r = sv.getBoundingClientRect();
+    s = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    v = 1 - Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+    curHex = anchor = hsvToHex(h, s, v);
+    paint({ drag: true });
+    onChange(curHex);
+  };
+  sv.addEventListener('pointerdown', e => { dragging = true; try { sv.setPointerCapture(e.pointerId); } catch {} move(e); });
+  sv.addEventListener('pointermove', e => { if (dragging) move(e); });
+  const end = () => { if (dragging) { dragging = false; paintSaved(); } };
+  sv.addEventListener('pointerup', end);
+  sv.addEventListener('pointercancel', end);
+  hue.addEventListener('input', () => {
+    h = Number(hue.value);
+    curHex = anchor = hsvToHex(h, s, v);
+    paint({ skip: 'hue', drag: true });
+    onChange(curHex);
+  });
+  hue.addEventListener('change', paintSaved);
+  hex.addEventListener('input', () => {
+    let t = hex.value.trim().toLowerCase();
+    if (!t.startsWith('#')) t = '#' + t;
+    if (/^#[0-9a-f]{3}$/.test(t)) t = '#' + [...t.slice(1)].map(c => c + c).join('');
+    if (/^#[0-9a-f]{6}$/.test(t)) setHex(t, { skip: 'hex' });
+  });
+  shadeBtns.forEach(b => b.addEventListener('click', () => setHex(b.dataset.hex, { keepAnchor: true })));
+  saveBtn.addEventListener('click', () => {
+    if (savedColors.some(x => x.hex === curHex)) return toast('Cette couleur est déjà dans Mes couleurs.');
+    if (addSavedColor(curHex)) paint();
+  });
+  const wrap = el('div', { class: 'cp' }, sv, hue, el('div', { class: 'cp-hexrow' }, swatch, hex, saveBtn), shadeRow, saved);
+  paint();
+  return wrap;
+}
+
+/* ----- Panneau de personnalisation ----- */
+function commitTheme() {
+  applyTheme();
+  clearTimeout(persistT);
+  persistT = setTimeout(persistTheme, 200);
+}
+function setThemeKey(patch, rerender = false) {
+  Object.assign(theme, patch);
+  commitTheme();
+  if (rerender) renderThemes();
+}
+/* Fait clignoter la zone de l'app qui utilise la couleur choisie */
+function flashZone(key) {
+  const b = document.body;
+  b.dataset.hl = '';
+  void b.offsetWidth;
+  b.dataset.hl = key;
+  clearTimeout(flashT);
+  flashT = setTimeout(() => { delete b.dataset.hl; }, 1300);
 }
 function rangeRow(label, key, min, max, step, unit) {
   const val = el('strong', { text: theme[key] + unit });
   const r = el('input', { type: 'range', min, max, step, value: theme[key], 'aria-label': label });
-  r.addEventListener('input', () => { theme[key] = Number(r.value); val.textContent = r.value + unit; persistTheme(); applyTheme(); });
+  r.addEventListener('input', () => { theme[key] = Number(r.value); val.textContent = r.value + unit; commitTheme(); });
   return el('div', { class: 'range-row' }, el('div', { class: 'range-top' }, el('span', { text: label }), val), r);
-}
-function themePreview() {
-  const p = el('div', { class: 'theme-preview', 'aria-hidden': 'true' });
-  if (wallpaper) {
-    const w = el('div', { class: 'tp-wp' });
-    w.style.backgroundImage = `url("${wallpaper}")`;
-    p.append(w, el('div', { class: 'tp-veil' }));
-  }
-  p.append(
-    el('div', { class: 'tp-card' }, el('strong', { text: 'Ma carte' }), el('small', { text: 'Aperçu' })),
-    el('div', { class: 'tp-side' }, el('strong', { class: 'tp-title', text: 'Mes cartes' }), el('span', { class: 'tp-chip', text: 'Filtre' }), el('span', { class: 'tp-btn', text: 'Bouton' })));
-  return p;
 }
 function colorsPanel() {
   const box = el('div', { class: 'theme-panel' });
-  const mode = el('div', { class: 'segmented three', role: 'radiogroup', 'aria-label': 'Mode' });
+  const tgt = TARGETS.find(t => t.key === themeTarget && (!t.adv || themeAdv)) || TARGETS[0];
+
+  const mode = el('div', { class: 'segmented three', role: 'radiogroup', 'aria-label': 'Mode de base' });
   [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']].forEach(([v, l]) => {
     const b = el('button', { type: 'button', class: `seg${theme.mode === v ? ' active' : ''}`, text: l });
     b.addEventListener('click', () => setThemeKey({ mode: v }, true));
     mode.append(b);
   });
-  box.append(el('span', { class: 'form-label', text: 'Mode de base' }), mode);
 
-  box.append(colorField("Couleur d'accent", 'accent', 'Boutons, onglets, détails', false));
-  const dots = el('div', { class: 'color-row' });
-  ACCENTS.forEach(c => {
-    const d = el('button', { type: 'button', class: `color-dot${c === theme.accent ? ' selected' : ''}`, 'aria-label': `Accent ${c}` });
-    d.style.background = c;
-    d.addEventListener('click', () => setThemeKey({ accent: c }, true));
-    dots.append(d);
+  const dots = {};
+  const chips = el('div', { class: 'tchips', role: 'tablist', 'aria-label': 'Quoi colorer' });
+  TARGETS.filter(t => !t.adv || themeAdv).forEach(t => {
+    const i = el('i');
+    dots[t.key] = i;
+    const b = el('button', { type: 'button', class: `tchip${t.key === tgt.key ? ' active' : ''}` }, i, t.label);
+    b.addEventListener('click', () => { themeTarget = t.key; flashZone(t.key); renderThemes(); });
+    chips.append(b);
   });
-  box.append(dots);
-  box.append(colorField('Deuxième couleur', 'accent2', 'Fin du dégradé des boutons', true));
-  box.append(colorField('Fond', 'bg', "Arrière-plan de l'app", true));
-  box.append(colorField('Surfaces', 'surface', 'Feuilles, champs, barre du bas', true));
-  box.append(colorField('Texte', 'text', 'Titres et textes', true));
+  const more = el('button', { type: 'button', class: 'tchip more', text: themeAdv ? 'Moins ▴' : 'Avancé ▾' });
+  more.addEventListener('click', () => {
+    themeAdv = !themeAdv;
+    if (!themeAdv && TARGETS.find(t => t.key === themeTarget).adv) themeTarget = 'accent';
+    renderThemes();
+  });
+  chips.append(more);
 
-  const halo = el('label', { class: 'check-row' }, el('input', { type: 'checkbox' }), el('span', { text: "Halo coloré en fond" }));
-  halo.firstChild.checked = theme.halo;
-  halo.firstChild.addEventListener('change', e => setThemeKey({ halo: e.target.checked }));
-  box.append(halo);
+  const desc = el('span');
+  const resetBtn = el('button', { type: 'button', class: 'chip small' });
+  const sync = () => {
+    const c = computeTheme();
+    TARGETS.forEach(t => { if (dots[t.key]) dots[t.key].style.setProperty('--c', c[t.key]); });
+    const isAuto = tgt.auto && theme[tgt.key] === null;
+    desc.textContent = tgt.desc + (isAuto ? ' · automatique' : '');
+    resetBtn.textContent = tgt.auto ? 'Auto' : 'Réinitialiser';
+    resetBtn.hidden = tgt.auto ? isAuto : theme.accent === DEFAULT_THEME.accent;
+  };
+  resetBtn.addEventListener('click', () => {
+    theme[tgt.key] = tgt.auto ? null : DEFAULT_THEME[tgt.key];
+    commitTheme();
+    renderThemes();
+  });
+  const meta = el('div', { class: 't-meta' }, desc, resetBtn);
 
-  const reset = el('button', { type: 'button', class: 'secondary-button', text: 'Réinitialiser les couleurs' });
-  reset.addEventListener('click', () => { setThemeKey({ ...DEFAULT_THEME, wpBlur: theme.wpBlur, wpVeil: theme.wpVeil }, true); toast('Couleurs réinitialisées'); });
-  box.append(reset);
+  const picker = buildPicker(computeTheme()[tgt.key], hexv => { theme[tgt.key] = hexv; commitTheme(); sync(); });
+  sync();
+  box.append(mode, chips, meta, picker);
+
+  if (themeAdv) {
+    const halo = el('label', { class: 'check-row' }, el('input', { type: 'checkbox' }), el('span', { text: 'Halo coloré en fond' }));
+    halo.firstChild.checked = theme.halo;
+    halo.firstChild.addEventListener('change', e => setThemeKey({ halo: e.target.checked }));
+    const reset = el('button', { type: 'button', class: 'secondary-button', text: 'Tout réinitialiser' });
+    reset.addEventListener('click', () => { setThemeKey({ ...DEFAULT_THEME, wpBlur: theme.wpBlur, wpVeil: theme.wpVeil }, true); toast('Couleurs réinitialisées'); });
+    box.append(halo, reset);
+  }
   return box;
 }
 function wallpaperPanel() {
   const box = el('div', { class: 'theme-panel' });
-  box.append(el('p', { class: 'field-hint', text: wallpaper ? 'Règle le flou et le voile pour garder les cartes bien lisibles.' : "Choisis une image de ta galerie pour habiller toute l'app. Elle reste sur cet appareil." }));
+  box.append(el('p', { class: 'field-hint', text: wallpaper ? "Règle le flou et le voile en regardant ton app juste au-dessus." : "Choisis une image de ta galerie pour habiller l'app. Elle reste sur cet appareil." }));
+  const row = el('div', { class: 'btn-row' });
   const pick = el('button', { type: 'button', class: 'primary-button', text: wallpaper ? "Changer l'image" : 'Choisir une image' });
   pick.addEventListener('click', () => $('wpInput').click());
-  box.append(pick);
+  row.append(pick);
   if (wallpaper) {
-    box.append(rangeRow('Flou', 'wpBlur', 0, 24, 1, ' px'), rangeRow('Voile (couleur du fond)', 'wpVeil', 0, 90, 5, ' %'));
-    const rm = el('button', { type: 'button', class: 'secondary-button', text: 'Retirer le fond d’écran' });
+    const rm = el('button', { type: 'button', class: 'secondary-button', text: 'Retirer' });
     rm.addEventListener('click', () => { try { localStorage.removeItem(WP_KEY); } catch {} wallpaper = null; applyTheme(); renderThemes(); toast('Fond d’écran retiré'); });
-    box.append(rm);
+    row.append(rm);
   }
+  box.append(row);
+  if (wallpaper) box.append(rangeRow('Flou', 'wpBlur', 0, 24, 1, ' px'), rangeRow('Voile (couleur du fond)', 'wpVeil', 0, 90, 5, ' %'));
   return box;
 }
 function renderThemes() {
-  const tabs = el('div', { class: 'segmented', role: 'tablist' });
+  const tabs = $('themeTabs');
+  tabs.replaceChildren();
   [['colors', 'Couleurs'], ['wallpaper', "Fond d'écran"]].forEach(([id, label]) => {
     const b = el('button', { type: 'button', role: 'tab', class: `seg${themeTab === id ? ' active' : ''}`, text: label });
     b.addEventListener('click', () => { themeTab = id; renderThemes(); });
     tabs.append(b);
   });
-  $('themeList').replaceChildren(tabs, themePreview(), themeTab === 'colors' ? colorsPanel() : wallpaperPanel());
+  $('themeList').replaceChildren(themeTab === 'colors' ? colorsPanel() : wallpaperPanel());
 }
 function resizeWallpaper(file) {
   return new Promise((resolve, reject) => {
@@ -622,7 +799,7 @@ function commitOrder() {
 /* ---------- Pile de fenêtres + bouton Retour du téléphone ---------- */
 const LAYERS = {
   form: ['formSheet', 'formBackdrop'],
-  theme: ['themeSheet', 'themeBackdrop'],
+  theme: ['themeSheet', null],
   menu: ['menuSheet', 'menuBackdrop'],
   detail: ['detailPanel', 'detailBackdrop'],
   scanner: ['scanner', null]
@@ -636,7 +813,7 @@ function openLayer(name, { replace = false } = {}) {
   if (backdrop) $(backdrop).hidden = false;
   stack.push(name);
   if (replace) history.replaceState({ layer: name }, ''); else history.pushState({ layer: name }, '');
-  document.body.classList.add('no-scroll');
+  document.body.classList.add(name === 'theme' ? 'dock-open' : 'no-scroll');
 }
 function hideLayer(name) {
   const [panel, backdrop] = LAYERS[name];
@@ -645,6 +822,7 @@ function hideLayer(name) {
   if (name === 'form') { editingId = null; $('cagnotteCodeInput').value = ''; }
   if (name === 'detail') cleanupDetail();
   if (name === 'scanner') stopScan();
+  if (name === 'theme') { document.body.classList.remove('dock-open'); delete document.body.dataset.hl; persistTheme(); }
   if (!stack.length) document.body.classList.remove('no-scroll');
 }
 function closeLayer() {
@@ -777,12 +955,26 @@ function renderColors() {
     d.addEventListener('click', () => { selectedColor = c; renderColors(); });
     row.append(d);
   });
-  const custom = el('label', { class: `color-dot custom${COLORS.includes(selectedColor) ? '' : ' selected'}`, 'aria-label': 'Couleur personnalisée' });
-  if (!COLORS.includes(selectedColor)) custom.style.background = selectedColor;
+  const sel = (selectedColor || '').toLowerCase();
+  const known = COLORS.includes(selectedColor) || savedColors.some(x => x.hex === sel);
+  savedColors.forEach(x => {
+    const d = el('button', { type: 'button', class: `color-dot${x.hex === sel ? ' selected' : ''}`, 'aria-label': x.name || `Couleur enregistrée ${x.hex}`, title: x.name || x.hex });
+    d.style.background = x.hex;
+    d.addEventListener('click', () => { selectedColor = x.hex; renderColors(); });
+    row.append(d);
+  });
+  const custom = el('label', { class: `color-dot custom${known ? '' : ' selected'}`, 'aria-label': 'Couleur personnalisée' });
+  if (!known) custom.style.background = selectedColor;
   const input = el('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(selectedColor) ? selectedColor : '#2264d1' });
   input.addEventListener('input', () => { selectedColor = input.value; custom.style.background = input.value; custom.classList.add('selected'); row.querySelectorAll('.color-dot:not(.custom)').forEach(x => x.classList.remove('selected')); updatePreview(); });
+  input.addEventListener('change', renderColors);
   custom.append(input);
   row.append(custom);
+  if (!known) {
+    const sb = el('button', { type: 'button', class: 'text-button save-color', text: '☆ Enregistrer cette couleur' });
+    sb.addEventListener('click', () => { if (addSavedColor(selectedColor)) renderColors(); });
+    row.append(sb);
+  }
   updatePreview();
 }
 function updateLogoPreview() {
@@ -1345,7 +1537,7 @@ function updateBackupInfo() {
 }
 function exportCards() {
   if (!cards.length) return toast('Aucune carte à exporter.');
-  const payload = { app: 'mes-cartes', version: 4, exportedAt: new Date().toISOString(), cards };
+  const payload = { app: 'mes-cartes', version: 5, exportedAt: new Date().toISOString(), cards, colors: savedColors };
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
   const a = el('a', { href: URL.createObjectURL(blob), download: `mes-cartes-${new Date().toISOString().slice(0, 10)}.json` });
   document.body.append(a); a.click(); a.remove();
@@ -1359,6 +1551,12 @@ async function importCards(file) {
     const data = JSON.parse(await file.text());
     const list = Array.isArray(data) ? data : data.cards;
     if (!Array.isArray(list)) throw new Error('format');
+    if (Array.isArray(data.colors)) {
+      data.colors.forEach(c => {
+        if (c && isHex(c.hex) && savedColors.length < 36 && !savedColors.some(x => x.hex === c.hex.toLowerCase())) savedColors.push({ hex: c.hex.toLowerCase(), name: String(c.name || '').slice(0, 24) });
+      });
+      persistSavedColors();
+    }
     const known = new Set(cards.map(c => c.id));
     const sig = c => `${norm(c.name)}|${c.code}`;
     const sigs = new Set(cards.filter(c => c.code).map(sig));
@@ -1458,9 +1656,23 @@ $('wpInput').addEventListener('change', async e => {
     toast('Fond d\u2019écran ajouté ✓');
   } catch { toast('Image illisible ou stockage plein.'); }
 });
-$('themeButton').addEventListener('click', () => { renderThemes(); openLayer('theme'); });
-$('closeTheme').addEventListener('click', closeLayer);
-$('themeBackdrop').addEventListener('click', closeLayer);
+$('themeButton').addEventListener('click', () => {
+  themeSnap = { theme: { ...theme }, wallpaper };
+  themeTab = 'colors'; themeTarget = 'accent'; themeAdv = false;
+  renderThemes();
+  openLayer('theme');
+});
+$('themeDone').addEventListener('click', closeLayer);
+$('themeCancel').addEventListener('click', () => {
+  if (themeSnap) {
+    theme = { ...themeSnap.theme };
+    wallpaper = themeSnap.wallpaper;
+    try { if (wallpaper) localStorage.setItem(WP_KEY, wallpaper); else localStorage.removeItem(WP_KEY); } catch {}
+    persistTheme();
+    applyTheme();
+  }
+  closeLayer();
+});
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (theme.mode === 'auto') applyTheme(); });
 
 $('menuButton').addEventListener('click', () => openLayer('menu'));
