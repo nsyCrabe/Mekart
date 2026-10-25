@@ -9,7 +9,8 @@ const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
 const VIEW_KEY = 'loyalty_view_v1';
-const APP_VERSION = '5.0';
+const LOCK_KEY = 'loyalty_lock_v1';
+const APP_VERSION = '5.1';
 
 const CATEGORIES = [
   { id: 'courses', name: 'Courses', emoji: '🛒' },
@@ -70,6 +71,7 @@ const ICONS = {
   phone: '<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 18h.01"/>',
   refresh: '<path d="M21 12a9 9 0 1 1-3-6.700L21 8"/><path d="M21 3v5h-5"/>',
   bulb: '<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.700c.6.500 1 1.300 1 2.300h6c0-1 .4-1.800 1-2.300A7 7 0 0 0 12 2z"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   store: '<path d="m3 9 1.500-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/>'
 };
 const ic = name => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
@@ -920,16 +922,66 @@ function refreshCodeRow(c) {
     $('cagnotteCodeShow').setAttribute('aria-label', 'Convertir les anciens codes');
   }
 }
-function toggleCode() {
+async function toggleCode() {
   const c = cards.find(x => x.id === openedId);
   if (!c || !c.cagnotteCode) return;
   if (isLegacyCode(c)) return convertLegacyCodes();
   const btn = $('cagnotteCodeShow');
   if (btn.dataset.shown === '1') return maskCode();
+  if (!(await lockAuth())) return;
+  if (openedId !== c.id) return;   // la fiche a été fermée pendant la vérification
   $('cagnotteCodeText').textContent = c.cagnotteCode;
   setIcon(btn, 'eye-off');
   btn.setAttribute('aria-label', 'Masquer le code');
   btn.dataset.shown = '1';
+}
+
+/* ---------- Verrou biométrique (empreinte, visage ou verrouillage d'écran) ----------
+   Une clé WebAuthn est créée sur l'appareil ; l'affichage d'un code cagnotte demande ensuite de la valider.
+   Rien n'est envoyé sur Internet : c'est un verrou local, qui protège contre quelqu'un qui emprunte le téléphone déverrouillé. */
+const b64enc = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const lockEnabled = () => !!localStorage.getItem(LOCK_KEY);
+function refreshLockUi() {
+  const on = lockEnabled();
+  $('lockTitle').textContent = on ? 'Verrou biométrique activé' : 'Activer le verrou biométrique';
+  $('lockHint').textContent = on ? 'Demandé avant d\'afficher un code cagnotte. Touche pour désactiver.' : 'Demande ton empreinte ou ton visage avant d\'afficher un code cagnotte.';
+}
+async function lockAuth() {
+  const id = localStorage.getItem(LOCK_KEY);
+  if (!id) return true;
+  try {
+    await navigator.credentials.get({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ type: 'public-key', id: b64dec(id), transports: ['internal'] }],
+      userVerification: 'required', timeout: 60000
+    } });
+    return true;
+  } catch { toast('Vérification annulée ou impossible.'); return false; }
+}
+async function enableLock() {
+  if (!window.PublicKeyCredential || !navigator.credentials?.create) return toast('Verrou biométrique indisponible sur ce navigateur.');
+  try {
+    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.();
+    if (!available) return toast("Configure d'abord une empreinte, un visage ou un verrouillage d'écran sur ton téléphone.");
+    const cred = await navigator.credentials.create({ publicKey: {
+      rp: { name: 'Mes cartes' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'mes-cartes', displayName: 'Mes cartes' },
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
+      timeout: 60000
+    } });
+    localStorage.setItem(LOCK_KEY, b64enc(cred.rawId));
+    toast('Verrou activé ✓');
+  } catch { toast('Activation annulée.'); }
+  refreshLockUi();
+}
+async function toggleLock() {
+  if (!lockEnabled()) return enableLock();
+  if (!(await lockAuth())) return;   // on doit valider pour désactiver
+  localStorage.removeItem(LOCK_KEY);
+  toast('Verrou désactivé');
+  refreshLockUi();
 }
 
 /* ---------- Anciens codes protégés : conversion unique ----------
@@ -1045,6 +1097,7 @@ $('cardsGrid').addEventListener('contextmenu', e => { if (reorderMode) e.prevent
 $('imageButton').addEventListener('click', () => $('imageInput').click());
 $('imageInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await readCodeFromImage(f); e.target.value = ''; });
 $('forceUpdateButton').addEventListener('click', forceUpdate);
+$('lockButton').addEventListener('click', toggleLock);
 $('cagnotteCodeShow').addEventListener('click', toggleCode);
 $('cagnotteCodeEye').addEventListener('click', () => $('cagnotteCodeInput').classList.toggle('masked'));
 $('removeCagnotteCode').addEventListener('click', () => {
@@ -1166,6 +1219,7 @@ $('categoryInput').replaceChildren(
 );
 document.querySelectorAll('[data-icon]').forEach(n => n.insertAdjacentHTML('afterbegin', ic(n.dataset.icon)));
 $('versionNote').textContent = `Version ${APP_VERSION}`;
+refreshLockUi();
 load();
 if (!cards.some(isLegacyCode)) localStorage.removeItem(VAULT_KEY);
 render();
