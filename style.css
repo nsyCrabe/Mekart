@@ -321,29 +321,40 @@ body{padding-bottom:calc(112px + var(--safe-b))}
 .advanced summary::after{content:"+";margin-left:auto;color:var(--muted);font-size:1.4rem}
 .advanced[open] summary::after{content:"−"}
 
-/* Fiche carte en plein écran */
-.detail-panel{left:0;top:0;right:0;bottom:0;width:100%;max-height:none;margin:0;padding:0;border-radius:0;transform:none;box-shadow:none;background:var(--bg);overscroll-behavior:contain;animation:detailUp .25s ease}
-@keyframes detailUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
-.detail-hero{position:relative;padding:calc(12px + var(--safe-t)) 18px 24px;border-radius:0 0 30px 30px;background:linear-gradient(150deg,var(--card-color,#2264d1),var(--card-color-dark,#1b4fa8));color:var(--card-fg,#fff)}
-.detail-hero .close-button,.detail-hero .tool-button{width:46px;height:46px;border:0;border-radius:50%;background:#ffffff2e;color:inherit}
-.detail-hero .detail-type{color:inherit;opacity:.85;margin-bottom:10px}
-.detail-hero .detail-logo{background:#fff;color:var(--card-color-dark,#1b4fa8);box-shadow:0 8px 20px #0003}
-.detail-hero .tag{background:#ffffff2e;color:inherit}
-.detail-hero .tag.warn{background:#fff;color:#9a3412}
-.detail-hero .detail-meta{margin:0}
-.detail-body{max-width:520px;margin:0 auto;padding:18px 18px calc(24px + var(--safe-b))}
-.detail-menu{position:absolute;right:18px;top:calc(66px + var(--safe-t));z-index:5;display:grid;min-width:190px;padding:6px;border-radius:16px;background:var(--surface);color:var(--text);box-shadow:0 14px 36px #0005}
-.detail-menu button{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border:0;border-radius:11px;background:transparent;font-weight:700;text-align:left}
-.detail-menu button:active{background:var(--soft)}
-.detail-menu .danger{color:var(--danger)}
-.detail-body .cagnotte-box,.detail-body .balance-box{margin-top:0}
 .pin-row{margin:0 0 14px;padding:12px 14px;border:0;border-radius:18px;background:var(--soft)}
 .pin-row .tool-button{width:42px;height:42px;min-width:42px;min-height:42px;border:0;border-radius:50%;background:var(--surface)}
 .cagnotte-box .tool-button svg.ic,.pin-row .tool-button svg.ic{width:20px;height:20px}
 .progress{height:8px;margin-top:10px;overflow:hidden;border-radius:999px;background:var(--line)}
 .progress span{display:block;height:100%;border-radius:999px;background:var(--accent);transition:width .3s}
-.code-box{margin-top:0}
+.tag.warn{background:#ffedd5;color:#9a3412}
+.detail-menu{position:absolute;right:16px;top:calc(64px);z-index:5;display:grid;min-width:190px;padding:6px;border-radius:16px;background:var(--surface);color:var(--text);box-shadow:0 14px 36px #0005}
+.detail-menu button{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border:0;border-radius:11px;background:transparent;font-weight:700;text-align:left}
+.detail-menu button:active{background:var(--soft)}
+.detail-menu .danger{color:var(--danger)}
+/* ---------- Fiche carte : ticket aux couleurs de la carte ---------- */
+.detail-panel{inset:0;width:min(420px,calc(100% - 24px));height:fit-content;max-height:calc(100dvh - 24px - var(--safe-t) - var(--safe-b));margin:auto;padding:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;border-radius:0;background:none;box-shadow:none;transform:none;animation:detailIn .32s cubic-bezier(.2,.8,.2,1)}
+.detail-panel::-webkit-scrollbar{display:none}
+@keyframes detailIn{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+.pass-head,.pass-body{--n:12px}
+.pass-head{position:relative;overflow:hidden;padding:12px 16px 24px;border-radius:28px 28px 0 0;color:var(--card-fg,#fff);background:linear-gradient(150deg,var(--card-color,var(--accent)),var(--card-color-dark,var(--accent-dark)));-webkit-mask:radial-gradient(circle var(--n) at 0 100%,#0000 calc(var(--n) - .5px),#000 var(--n)) left/51% 100% no-repeat,radial-gradient(circle var(--n) at 100% 100%,#0000 calc(var(--n) - .5px),#000 var(--n)) right/51% 100% no-repeat;mask:radial-gradient(circle var(--n) at 0 100%,#0000 calc(var(--n) - .5px),#000 var(--n)) left/51% 100% no-repeat,radial-gradient(circle var(--n) at 100% 100%,#0000 calc(var(--n) - .5px),#000 var(--n)) right/51% 100% no-repeat}
+.pass-head::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,#ffffff2e,#fff0 48%);pointer-events:none}
+.pass-head::after{content:"";position:absolute;right:-60px;top:-70px;width:200px;height:200px;border-radius:50%;background:#ffffff14;pointer-events:none}
+.pass-head>*{position:relative;z-index:1}
+.pass-body{position:relative;padding:22px 18px 18px;border-radius:0 0 28px 28px;background:var(--surface);-webkit-mask:radial-gradient(circle var(--n) at 0 0,#0000 calc(var(--n) - .5px),#000 var(--n)) left/51% 100% no-repeat,radial-gradient(circle var(--n) at 100% 0,#0000 calc(var(--n) - .5px),#000 var(--n)) right/51% 100% no-repeat;mask:radial-gradient(circle var(--n) at 0 0,#0000 calc(var(--n) - .5px),#000 var(--n)) left/51% 100% no-repeat,radial-gradient(circle var(--n) at 100% 0,#0000 calc(var(--n) - .5px),#000 var(--n)) right/51% 100% no-repeat}
+.pass-body::before{content:"";position:absolute;left:22px;right:22px;top:0;border-top:2px dashed var(--line)}
+/* Code agrandi : on retire les masques pour que le plein écran ne soit pas rogné */
+.detail-panel.code-big .pass-head,.detail-panel.code-big .pass-body{-webkit-mask:none;mask:none}
+.detail-toolbar{margin-bottom:12px}
+.detail-toolbar .close-button,.detail-toolbar .tool-button{width:42px;height:42px;min-width:42px;min-height:42px;border:0;background:#ffffff2e;background:color-mix(in srgb,var(--card-fg,#fff) 16%,transparent);color:inherit}
+.detail-id{display:flex;align-items:center;gap:14px}
+.detail-id-text{min-width:0;flex:1}
+.detail-logo{width:68px;height:68px;flex:none;margin:0;border-radius:20px;background:#fff;color:var(--card-color-dark,var(--accent));font-size:1.5rem;box-shadow:0 8px 18px -8px #0007}
+.detail-id h2{margin:0;font-size:1.42rem;font-weight:850;line-height:1.15;letter-spacing:-.025em;text-align:left;overflow-wrap:anywhere}
+.detail-id .detail-type{margin:4px 0 0;color:inherit;opacity:.85;font-size:.84rem;text-align:left}
+.pass-body .detail-meta{justify-content:flex-start;margin:0 0 14px}
+.pass-body .wide{width:100%;margin-top:16px}
 .code-box.big{z-index:300}
 
 /* Liste déroulante de tri : même look que les puces */
 .sort-select{appearance:none;-webkit-appearance:none;margin-left:0;max-width:none;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:.85rem;font-weight:700;text-align:center;text-align-last:center}
+

@@ -898,6 +898,7 @@ function cleanupDetail() {
   $('detailMenu').hidden = true;
   syncThemeColor();
   $('codeBox').classList.remove('big');
+  $('detailPanel').classList.remove('code-big');
   releaseAwake();
   render(); // met à jour l'ordre (récentes / utilisées)
 }
@@ -908,6 +909,7 @@ function syncFavButton(c) {
 function toggleBig() {
   const box = $('codeBox');
   const big = box.classList.toggle('big');
+  $('detailPanel').classList.toggle('code-big', big);
   $('codeHint').textContent = big ? 'Touche pour réduire' : 'Touche pour agrandir';
   box.setAttribute('aria-label', big ? 'Réduire le code' : 'Agrandir le code');
 }

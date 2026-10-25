@@ -247,7 +247,11 @@
 <!-- Fiche carte -->
 <div class="backdrop" id="detailBackdrop" hidden></div>
 <section class="detail-panel" id="detailPanel" hidden aria-label="Détail de la carte">
-  <div class="detail-hero" id="detailHero">
+  <div class="detail-menu" id="detailMenu" hidden>
+    <button id="editCard" type="button"><span data-icon="edit" aria-hidden="true"></span>Modifier</button>
+    <button class="danger" id="deleteCard" type="button"><span data-icon="trash" aria-hidden="true"></span>Supprimer</button>
+  </div>
+  <div class="pass-head" id="detailHero">
     <div class="detail-toolbar">
       <button class="close-button" id="closeDetail" type="button" aria-label="Fermer" data-icon="close"></button>
       <div class="detail-actions">
@@ -255,17 +259,17 @@
         <button class="tool-button" id="moreCard" type="button" aria-label="Plus d'actions" data-icon="more"></button>
       </div>
     </div>
-    <div class="detail-menu" id="detailMenu" hidden>
-      <button id="editCard" type="button"><span data-icon="edit" aria-hidden="true"></span>Modifier</button>
-      <button class="danger" id="deleteCard" type="button"><span data-icon="trash" aria-hidden="true"></span>Supprimer</button>
+    <div class="detail-id">
+      <div class="detail-logo" id="detailLogo"></div>
+      <div class="detail-id-text">
+        <h2 id="detailName"></h2>
+        <p class="detail-type" id="detailType"></p>
+      </div>
     </div>
-    <div class="detail-logo" id="detailLogo"></div>
-    <h2 id="detailName"></h2>
-    <p class="detail-type" id="detailType"></p>
-    <div class="detail-meta" id="detailMeta" hidden></div>
   </div>
 
-  <div class="detail-body">
+  <div class="pass-body">
+    <div class="detail-meta" id="detailMeta" hidden></div>
     <div class="cagnotte-box" id="cagnotteBox" hidden>
       <div class="cagnotte-view" id="cagnotteView">
         <div><small>Cagnotte</small><strong id="cagnotteValue">0,00 €</strong></div>
