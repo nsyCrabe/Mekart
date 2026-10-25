@@ -8,7 +8,7 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
-const APP_VERSION = '5.0';
+const APP_VERSION = '5.1';
 const VIEW_KEY = 'loyalty_view_v1';
 const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
@@ -43,18 +43,20 @@ const TEMPLATES = [
 ].map(([name, category, color]) => ({ name, category, color }));
 
 const THEMES = [
-  { id: 'light', name: 'Clair', category: 'light', description: 'Propre et lumineux', swatch: 'linear-gradient(135deg,#f4f7fb,#3268e8)' },
-  { id: 'sunset', name: 'Coucher de soleil', category: 'light', description: 'Chaleureux et doux', swatch: 'linear-gradient(135deg,#fff5f1,#e2573f)' },
-  { id: 'forest', name: 'Forêt', category: 'light', description: 'Nature et calme', swatch: 'linear-gradient(135deg,#eef8f2,#1f8a52)' },
-  { id: 'ocean', name: 'Océan', category: 'light', description: 'Frais et moderne', swatch: 'linear-gradient(135deg,#edf9fc,#00849b)' },
-  { id: 'candy', name: 'Bonbon', category: 'light', description: 'Rose et léger', swatch: 'linear-gradient(135deg,#fff3f8,#df4584)' },
-  { id: 'midnight', name: 'Minuit', category: 'dark', description: 'Confortable le soir', swatch: 'linear-gradient(135deg,#0e1525,#5c8df6)' },
-  { id: 'graphite', name: 'Graphite', category: 'dark', description: 'Gris profond', swatch: 'linear-gradient(135deg,#111318,#aeb8c7)' },
-  { id: 'purple-night', name: 'Nuit violette', category: 'dark', description: 'Sombre et élégant', swatch: 'linear-gradient(135deg,#151022,#b889ff)' },
-  { id: 'nord', name: 'Nord', category: 'dark', description: 'Bleu ardoise', swatch: 'linear-gradient(135deg,#202733,#88c0d0)' },
-  { id: 'ember', name: 'Braise', category: 'dark', description: 'Sombre et chaleureux', swatch: 'linear-gradient(135deg,#211414,#ff9b68)' },
-  { id: 'deep-ocean', name: 'Océan profond', category: 'dark', description: 'Sombre et cyan', swatch: 'linear-gradient(135deg,#071b27,#5ed6e6)' },
-  { id: 'mono', name: 'Noir et blanc', category: 'dark', description: 'Minimaliste', swatch: 'linear-gradient(135deg,#101010,#fff)' }
+  { id: 'light', name: 'Clair', category: 'light', description: 'Propre et lumineux', bg: '#f3f6fc', surface: '#ffffff', text: '#162036', accent: '#3b6ef0', accent2: '#6a5cf0', glow: '#d6e3ff' },
+  { id: 'sunset', name: 'Coucher de soleil', category: 'light', description: 'Chaleureux et doux', bg: '#fff4ee', surface: '#ffffff', text: '#3a2029', accent: '#ee5a3c', accent2: '#f59e3a', glow: '#ffd5c2' },
+  { id: 'forest', name: 'Forêt', category: 'light', description: 'Nature et calme', bg: '#eef7f1', surface: '#ffffff', text: '#14301f', accent: '#1f9254', accent2: '#58b447', glow: '#c5ecd3' },
+  { id: 'ocean', name: 'Océan', category: 'light', description: 'Frais et moderne', bg: '#ecf8fb', surface: '#ffffff', text: '#0f3340', accent: '#0a8fa8', accent2: '#2f6fe0', glow: '#bfeaf4' },
+  { id: 'candy', name: 'Bonbon', category: 'light', description: 'Rose et acidulé', bg: '#fff2f8', surface: '#ffffff', text: '#44213a', accent: '#e0407f', accent2: '#a65ce8', glow: '#ffd0e5' },
+  { id: 'lavender', name: 'Lavande', category: 'light', description: 'Violet doux', bg: '#f6f2ff', surface: '#ffffff', text: '#261d44', accent: '#7c4dff', accent2: '#c04df0', glow: '#e0d4ff' },
+  { id: 'midnight', name: 'Minuit', category: 'dark', description: 'Bleu nuit électrique', bg: '#0b1220', surface: '#162036', text: '#f4f7ff', accent: '#6b97ff', accent2: '#8f7bff', glow: '#1c3263' },
+  { id: 'graphite', name: 'Graphite', category: 'dark', description: 'Gris profond', bg: '#0f1115', surface: '#1a1d24', text: '#f2f4f7', accent: '#c3cddc', accent2: '#8fa0ba', glow: '#272d39' },
+  { id: 'purple-night', name: 'Nuit violette', category: 'dark', description: 'Violet et rose néon', bg: '#120d1f', surface: '#201735', text: '#faf7ff', accent: '#b98cff', accent2: '#ff7ad9', glow: '#3a2467' },
+  { id: 'nord', name: 'Nord', category: 'dark', description: 'Bleu ardoise', bg: '#1c2330', surface: '#283244', text: '#eceff4', accent: '#88c0d0', accent2: '#81a1c1', glow: '#2c4660' },
+  { id: 'ember', name: 'Braise', category: 'dark', description: 'Sombre et incandescent', bg: '#1d1212', surface: '#2e1e1e', text: '#fff7f1', accent: '#ff9b68', accent2: '#ff6b6b', glow: '#5a2a1c' },
+  { id: 'deep-ocean', name: 'Océan profond', category: 'dark', description: 'Abysses et cyan', bg: '#061822', surface: '#0c2837', text: '#effcff', accent: '#5ed6e6', accent2: '#4d9bff', glow: '#0c4a63' },
+  { id: 'aurora', name: 'Aurore', category: 'dark', description: 'Vert menthe boréal', bg: '#0a1418', surface: '#11222a', text: '#effffb', accent: '#5df2b0', accent2: '#5ea8ff', glow: '#0f5a52' },
+  { id: 'mono', name: 'Noir et blanc', category: 'dark', description: 'Minimaliste', bg: '#0e0e0e', surface: '#1b1b1b', text: '#ffffff', accent: '#ffffff', accent2: '#bdbdbd', glow: '#2b2b2b' }
 ];
 const DARK_IDS = THEMES.filter(t => t.category === 'dark').map(t => t.id);
 
@@ -232,17 +234,17 @@ function renderThemes() {
     return el('div', { class: 'theme-category' },
       el('div', { class: 'theme-category-heading' }, el('h3', { text: title }), el('p', { text: description })), list);
   };
-  const autoBtn = themeButton({
-    id: 'auto', name: 'Automatique', description: 'Suit le mode clair ou sombre du téléphone',
-    swatch: 'linear-gradient(135deg,#f4f7fb 50%,#0e1525 50%)'
-  });
-  const root = $('themeList');
-  root.replaceChildren(autoBtn, section('light', '☀️ Clair', 'Des couleurs lumineuses'), section('dark', '🌙 Sombre', 'Confortable dans le noir'));
+  const autoList = el('div', { class: 'theme-category-list' }, themeButton({
+    id: 'auto', name: 'Automatique', description: 'Suit le mode clair ou sombre du téléphone', auto: true
+  }));
+  $('themeList').replaceChildren(autoList, section('light', '☀️ Clair', 'Des couleurs lumineuses'), section('dark', '🌙 Sombre', 'Confortable dans le noir'));
 }
 function themeButton(t) {
   const active = t.id === themePref;
-  const b = el('button', { type: 'button', class: `theme-option${active ? ' active' : ''}` },
-    el('span', { class: 'theme-swatch', style: `background:${t.swatch}` }),
+  const sw = el('span', { class: `theme-swatch${t.auto ? ' auto' : ''}` }, el('i', { class: 'ts-top' }), el('i', { class: 'ts-a' }), el('i', { class: 'ts-b' }));
+  if (!t.auto) sw.style.cssText = `--tb:${t.bg};--ts:${t.surface};--tt:${t.text};--ta:${t.accent};--ta2:${t.accent2};--tg:${t.glow}`;
+  const b = el('button', { type: 'button', class: `theme-option${active ? ' active' : ''}${t.auto ? ' wide' : ''}`, 'aria-pressed': active ? 'true' : 'false' },
+    sw,
     el('span', { class: 'theme-info' }, el('strong', { text: t.name }), el('small', { text: t.description })),
     el('span', { class: 'theme-check', text: active ? '✓' : '' }));
   b.addEventListener('click', () => setTheme(t.id));
