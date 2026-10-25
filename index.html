@@ -13,7 +13,9 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css">
 </head>
-<body data-theme="light">
+<body>
+
+<div class="wallpaper" id="wallpaper" hidden><div class="wp-img" id="wpImg"></div><div class="wp-veil"></div></div>
 
 <header class="topbar">
   <div>
@@ -198,10 +200,11 @@
 <section class="sheet" id="themeSheet" hidden aria-label="Thème">
   <div class="handle"></div>
   <div class="sheet-title">
-    <h2>Choisir un thème</h2>
+    <h2>Personnaliser</h2>
     <button class="close-button" id="closeTheme" type="button" aria-label="Fermer">×</button>
   </div>
   <div class="theme-list" id="themeList"></div>
+  <input id="wpInput" type="file" accept="image/*" hidden>
 </section>
 
 <!-- Menu / sauvegarde -->

@@ -8,7 +8,7 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
-const APP_VERSION = '5.1';
+const APP_VERSION = '5.2';
 const VIEW_KEY = 'loyalty_view_v1';
 const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
@@ -42,23 +42,14 @@ const TEMPLATES = [
   ['Amazon', 'autre', '#e88b27']
 ].map(([name, category, color]) => ({ name, category, color }));
 
-const THEMES = [
-  { id: 'light', name: 'Clair', category: 'light', description: 'Propre et lumineux', bg: '#f3f6fc', surface: '#ffffff', text: '#162036', accent: '#3b6ef0', accent2: '#6a5cf0', glow: '#d6e3ff' },
-  { id: 'sunset', name: 'Coucher de soleil', category: 'light', description: 'Chaleureux et doux', bg: '#fff4ee', surface: '#ffffff', text: '#3a2029', accent: '#ee5a3c', accent2: '#f59e3a', glow: '#ffd5c2' },
-  { id: 'forest', name: 'Forêt', category: 'light', description: 'Nature et calme', bg: '#eef7f1', surface: '#ffffff', text: '#14301f', accent: '#1f9254', accent2: '#58b447', glow: '#c5ecd3' },
-  { id: 'ocean', name: 'Océan', category: 'light', description: 'Frais et moderne', bg: '#ecf8fb', surface: '#ffffff', text: '#0f3340', accent: '#0a8fa8', accent2: '#2f6fe0', glow: '#bfeaf4' },
-  { id: 'candy', name: 'Bonbon', category: 'light', description: 'Rose et acidulé', bg: '#fff2f8', surface: '#ffffff', text: '#44213a', accent: '#e0407f', accent2: '#a65ce8', glow: '#ffd0e5' },
-  { id: 'lavender', name: 'Lavande', category: 'light', description: 'Violet doux', bg: '#f6f2ff', surface: '#ffffff', text: '#261d44', accent: '#7c4dff', accent2: '#c04df0', glow: '#e0d4ff' },
-  { id: 'midnight', name: 'Minuit', category: 'dark', description: 'Bleu nuit électrique', bg: '#0b1220', surface: '#162036', text: '#f4f7ff', accent: '#6b97ff', accent2: '#8f7bff', glow: '#1c3263' },
-  { id: 'graphite', name: 'Graphite', category: 'dark', description: 'Gris profond', bg: '#0f1115', surface: '#1a1d24', text: '#f2f4f7', accent: '#c3cddc', accent2: '#8fa0ba', glow: '#272d39' },
-  { id: 'purple-night', name: 'Nuit violette', category: 'dark', description: 'Violet et rose néon', bg: '#120d1f', surface: '#201735', text: '#faf7ff', accent: '#b98cff', accent2: '#ff7ad9', glow: '#3a2467' },
-  { id: 'nord', name: 'Nord', category: 'dark', description: 'Bleu ardoise', bg: '#1c2330', surface: '#283244', text: '#eceff4', accent: '#88c0d0', accent2: '#81a1c1', glow: '#2c4660' },
-  { id: 'ember', name: 'Braise', category: 'dark', description: 'Sombre et incandescent', bg: '#1d1212', surface: '#2e1e1e', text: '#fff7f1', accent: '#ff9b68', accent2: '#ff6b6b', glow: '#5a2a1c' },
-  { id: 'deep-ocean', name: 'Océan profond', category: 'dark', description: 'Abysses et cyan', bg: '#061822', surface: '#0c2837', text: '#effcff', accent: '#5ed6e6', accent2: '#4d9bff', glow: '#0c4a63' },
-  { id: 'aurora', name: 'Aurore', category: 'dark', description: 'Vert menthe boréal', bg: '#0a1418', surface: '#11222a', text: '#effffb', accent: '#5df2b0', accent2: '#5ea8ff', glow: '#0f5a52' },
-  { id: 'mono', name: 'Noir et blanc', category: 'dark', description: 'Minimaliste', bg: '#0e0e0e', surface: '#1b1b1b', text: '#ffffff', accent: '#ffffff', accent2: '#bdbdbd', glow: '#2b2b2b' }
-];
-const DARK_IDS = THEMES.filter(t => t.category === 'dark').map(t => t.id);
+const THEME2_KEY = 'loyalty_theme_v3';
+const WP_KEY = 'loyalty_wallpaper_v1';
+const BASES = { light: { bg: '#f3f6fc', surface: '#ffffff' }, dark: { bg: '#0b1220', surface: '#162036' } };
+const DEFAULT_THEME = { mode: 'auto', accent: '#3b6ef0', accent2: null, bg: null, surface: null, text: null, halo: true, wpBlur: 0, wpVeil: 35 };
+const ACCENTS = ['#3b6ef0', '#7c4dff', '#e0407f', '#ee5a3c', '#f59e0b', '#1f9254', '#0a8fa8', '#64748b'];
+let theme = { ...DEFAULT_THEME };
+let wallpaper = null;
+let themeTab = 'colors';
 
 const $ = id => document.getElementById(id);
 
@@ -109,7 +100,6 @@ let formKind = 'loyalty';   // type de carte dans le formulaire
 let removeCode = false;     // « Retirer le code enregistré » demandé dans le formulaire
 let sortMode = 'recent';
 let viewMode = 'grid';      // grid | list
-let themePref = 'auto';
 let stream = null;
 let scanTimer = null;
 let wakeLock = null;
@@ -190,7 +180,7 @@ function load() {
   } catch { cards = []; }
   cards.forEach(c => { c.kind = kindOf(c); });
   tab = localStorage.getItem(TAB_KEY) === 'gift' ? 'gift' : 'loyalty';
-  themePref = localStorage.getItem(THEME_KEY) || 'auto';
+  loadTheme();
   sortMode = localStorage.getItem(SORT_KEY) || 'recent';
   if (!['recent', 'used', 'az', 'manual'].includes(sortMode)) sortMode = 'recent';
   viewMode = localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid';
@@ -206,49 +196,170 @@ function save() {
   catch { return false; }
 }
 
-/* ---------- Thèmes ---------- */
-function resolveTheme() {
-  if (themePref !== 'auto') return themePref;
-  return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'midnight' : 'light';
+/* ---------- Thème personnalisé + fond d'écran ---------- */
+const mixHex = (a, b, t) => {
+  const p = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const x = p(a), y = p(b);
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
+};
+const isHex = v => /^#[0-9a-f]{6}$/i.test(v || '');
+function loadTheme() {
+  try {
+    const t = JSON.parse(localStorage.getItem(THEME2_KEY) || 'null');
+    theme = { ...DEFAULT_THEME, ...(t && typeof t === 'object' ? t : {}) };
+  } catch { theme = { ...DEFAULT_THEME }; }
+  ['accent', 'accent2', 'bg', 'surface', 'text'].forEach(k => { if (!isHex(theme[k])) theme[k] = DEFAULT_THEME[k]; });
+  if (!['auto', 'light', 'dark'].includes(theme.mode)) theme.mode = 'auto';
+  theme.halo = theme.halo !== false;
+  theme.wpBlur = Math.max(0, Math.min(24, Number(theme.wpBlur) || 0));
+  theme.wpVeil = Math.max(0, Math.min(90, Number.isFinite(Number(theme.wpVeil)) ? Number(theme.wpVeil) : 35));
+  try { wallpaper = localStorage.getItem(WP_KEY) || null; } catch { wallpaper = null; }
+}
+function persistTheme() { try { localStorage.setItem(THEME2_KEY, JSON.stringify(theme)); } catch {} }
+/* Calcule les couleurs finales : ce que l'utilisateur a choisi, sinon des valeurs déduites */
+function computeTheme() {
+  const sysDark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+  const wantDark = theme.mode === 'dark' || (theme.mode === 'auto' && sysDark);
+  const base = BASES[wantDark ? 'dark' : 'light'];
+  const bg = theme.bg || base.bg;
+  const dark = theme.bg ? lum(bg) < 0.25 : wantDark;
+  const surface = theme.surface || (theme.bg ? mixHex(bg, '#ffffff', dark ? 0.07 : 0.7) : base.surface);
+  const text = theme.text || (dark ? '#f4f7ff' : '#162036');
+  const accent = theme.accent;
+  const accent2 = theme.accent2 || (lum(accent) > 0.35 ? darken(accent, -40) : mixHex(accent, '#ffffff', 0.28));
+  return { bg, surface, text, accent, accent2, dark };
 }
 function applyTheme() {
-  const id = resolveTheme();
-  document.body.dataset.theme = id;
-  document.body.dataset.mode = DARK_IDS.includes(id) ? 'dark' : 'light';
+  const c = computeTheme();
+  const body = document.body, s = body.style;
+  [['--bg', c.bg], ['--surface', c.surface], ['--text', c.text], ['--accent', c.accent], ['--accent-2', c.accent2], ['--accent-dark', c.accent2],
+   ['--on-accent', isLight(c.accent) ? '#101114' : '#fff'], ['--wp-blur', theme.wpBlur + 'px'], ['--wp-veil', theme.wpVeil + '%']]
+    .forEach(([k, v]) => s.setProperty(k, v));
+  body.dataset.mode = c.dark ? 'dark' : 'light';
+  body.dataset.halo = theme.halo ? 'on' : 'off';
+  body.dataset.wp = wallpaper ? '1' : '0';
+  $('wpImg').style.backgroundImage = wallpaper ? `url("${wallpaper}")` : '';
+  $('wallpaper').hidden = !wallpaper;
   syncThemeColor();
-  renderThemes();
 }
 function syncThemeColor(color) {
   const bg = color || getComputedStyle(document.body).getPropertyValue('--bg').trim();
   if (bg) $('themeColorMeta').content = bg;
 }
-function setTheme(pref) {
-  themePref = pref;
-  localStorage.setItem(THEME_KEY, pref);
+function setThemeKey(patch, rerender = false) {
+  Object.assign(theme, patch);
+  persistTheme();
   applyTheme();
+  if (rerender) renderThemes();
+}
+function colorField(label, key, hint, canAuto) {
+  const input = el('input', { type: 'color', value: computeTheme()[key], 'aria-label': label });
+  input.addEventListener('input', () => { theme[key] = input.value; persistTheme(); applyTheme(); });
+  input.addEventListener('change', renderThemes);
+  const auto = canAuto && theme[key] === null;
+  const row = el('div', { class: 'color-field' },
+    el('span', { class: 'cf-input' }, input),
+    el('span', { class: 'cf-label' }, el('strong', { text: label }), el('small', { text: auto ? 'Automatique' : hint })));
+  if (canAuto && !auto) {
+    const b = el('button', { type: 'button', class: 'chip small', text: 'Auto' });
+    b.addEventListener('click', () => setThemeKey({ [key]: null }, true));
+    row.append(b);
+  }
+  return row;
+}
+function rangeRow(label, key, min, max, step, unit) {
+  const val = el('strong', { text: theme[key] + unit });
+  const r = el('input', { type: 'range', min, max, step, value: theme[key], 'aria-label': label });
+  r.addEventListener('input', () => { theme[key] = Number(r.value); val.textContent = r.value + unit; persistTheme(); applyTheme(); });
+  return el('div', { class: 'range-row' }, el('div', { class: 'range-top' }, el('span', { text: label }), val), r);
+}
+function themePreview() {
+  const p = el('div', { class: 'theme-preview', 'aria-hidden': 'true' });
+  if (wallpaper) {
+    const w = el('div', { class: 'tp-wp' });
+    w.style.backgroundImage = `url("${wallpaper}")`;
+    p.append(w, el('div', { class: 'tp-veil' }));
+  }
+  p.append(
+    el('div', { class: 'tp-card' }, el('strong', { text: 'Ma carte' }), el('small', { text: 'Aperçu' })),
+    el('div', { class: 'tp-side' }, el('strong', { class: 'tp-title', text: 'Mes cartes' }), el('span', { class: 'tp-chip', text: 'Filtre' }), el('span', { class: 'tp-btn', text: 'Bouton' })));
+  return p;
+}
+function colorsPanel() {
+  const box = el('div', { class: 'theme-panel' });
+  const mode = el('div', { class: 'segmented three', role: 'radiogroup', 'aria-label': 'Mode' });
+  [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']].forEach(([v, l]) => {
+    const b = el('button', { type: 'button', class: `seg${theme.mode === v ? ' active' : ''}`, text: l });
+    b.addEventListener('click', () => setThemeKey({ mode: v }, true));
+    mode.append(b);
+  });
+  box.append(el('span', { class: 'form-label', text: 'Mode de base' }), mode);
+
+  box.append(colorField("Couleur d'accent", 'accent', 'Boutons, onglets, détails', false));
+  const dots = el('div', { class: 'color-row' });
+  ACCENTS.forEach(c => {
+    const d = el('button', { type: 'button', class: `color-dot${c === theme.accent ? ' selected' : ''}`, 'aria-label': `Accent ${c}` });
+    d.style.background = c;
+    d.addEventListener('click', () => setThemeKey({ accent: c }, true));
+    dots.append(d);
+  });
+  box.append(dots);
+  box.append(colorField('Deuxième couleur', 'accent2', 'Fin du dégradé des boutons', true));
+  box.append(colorField('Fond', 'bg', "Arrière-plan de l'app", true));
+  box.append(colorField('Surfaces', 'surface', 'Feuilles, champs, barre du bas', true));
+  box.append(colorField('Texte', 'text', 'Titres et textes', true));
+
+  const halo = el('label', { class: 'check-row' }, el('input', { type: 'checkbox' }), el('span', { text: "Halo coloré en fond" }));
+  halo.firstChild.checked = theme.halo;
+  halo.firstChild.addEventListener('change', e => setThemeKey({ halo: e.target.checked }));
+  box.append(halo);
+
+  const reset = el('button', { type: 'button', class: 'secondary-button', text: 'Réinitialiser les couleurs' });
+  reset.addEventListener('click', () => { setThemeKey({ ...DEFAULT_THEME, wpBlur: theme.wpBlur, wpVeil: theme.wpVeil }, true); toast('Couleurs réinitialisées'); });
+  box.append(reset);
+  return box;
+}
+function wallpaperPanel() {
+  const box = el('div', { class: 'theme-panel' });
+  box.append(el('p', { class: 'field-hint', text: wallpaper ? 'Règle le flou et le voile pour garder les cartes bien lisibles.' : "Choisis une image de ta galerie pour habiller toute l'app. Elle reste sur cet appareil." }));
+  const pick = el('button', { type: 'button', class: 'primary-button', text: wallpaper ? "Changer l'image" : 'Choisir une image' });
+  pick.addEventListener('click', () => $('wpInput').click());
+  box.append(pick);
+  if (wallpaper) {
+    box.append(rangeRow('Flou', 'wpBlur', 0, 24, 1, ' px'), rangeRow('Voile (couleur du fond)', 'wpVeil', 0, 90, 5, ' %'));
+    const rm = el('button', { type: 'button', class: 'secondary-button', text: 'Retirer le fond d’écran' });
+    rm.addEventListener('click', () => { try { localStorage.removeItem(WP_KEY); } catch {} wallpaper = null; applyTheme(); renderThemes(); toast('Fond d’écran retiré'); });
+    box.append(rm);
+  }
+  return box;
 }
 function renderThemes() {
-  const section = (category, title, description) => {
-    const list = el('div', { class: 'theme-category-list' });
-    THEMES.filter(t => t.category === category).forEach(t => list.append(themeButton(t)));
-    return el('div', { class: 'theme-category' },
-      el('div', { class: 'theme-category-heading' }, el('h3', { text: title }), el('p', { text: description })), list);
-  };
-  const autoList = el('div', { class: 'theme-category-list' }, themeButton({
-    id: 'auto', name: 'Automatique', description: 'Suit le mode clair ou sombre du téléphone', auto: true
-  }));
-  $('themeList').replaceChildren(autoList, section('light', '☀️ Clair', 'Des couleurs lumineuses'), section('dark', '🌙 Sombre', 'Confortable dans le noir'));
+  const tabs = el('div', { class: 'segmented', role: 'tablist' });
+  [['colors', 'Couleurs'], ['wallpaper', "Fond d'écran"]].forEach(([id, label]) => {
+    const b = el('button', { type: 'button', role: 'tab', class: `seg${themeTab === id ? ' active' : ''}`, text: label });
+    b.addEventListener('click', () => { themeTab = id; renderThemes(); });
+    tabs.append(b);
+  });
+  $('themeList').replaceChildren(tabs, themePreview(), themeTab === 'colors' ? colorsPanel() : wallpaperPanel());
 }
-function themeButton(t) {
-  const active = t.id === themePref;
-  const sw = el('span', { class: `theme-swatch${t.auto ? ' auto' : ''}` }, el('i', { class: 'ts-top' }), el('i', { class: 'ts-a' }), el('i', { class: 'ts-b' }));
-  if (!t.auto) sw.style.cssText = `--tb:${t.bg};--ts:${t.surface};--tt:${t.text};--ta:${t.accent};--ta2:${t.accent2};--tg:${t.glow}`;
-  const b = el('button', { type: 'button', class: `theme-option${active ? ' active' : ''}${t.auto ? ' wide' : ''}`, 'aria-pressed': active ? 'true' : 'false' },
-    sw,
-    el('span', { class: 'theme-info' }, el('strong', { text: t.name }), el('small', { text: t.description })),
-    el('span', { class: 'theme-check', text: active ? '✓' : '' }));
-  b.addEventListener('click', () => setTheme(t.id));
-  return b;
+function resizeWallpaper(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', 0.78));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 /* ---------- Liste des cartes ---------- */
@@ -1335,10 +1446,22 @@ $('logoInput').addEventListener('change', async e => {
 });
 $('removeLogo').addEventListener('click', () => { selectedLogo = null; updateLogoPreview(); });
 
+$('wpInput').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const url = await resizeWallpaper(f);
+    localStorage.setItem(WP_KEY, url);
+    wallpaper = url;
+    applyTheme(); renderThemes();
+    toast('Fond d\u2019écran ajouté ✓');
+  } catch { toast('Image illisible ou stockage plein.'); }
+});
 $('themeButton').addEventListener('click', () => { renderThemes(); openLayer('theme'); });
 $('closeTheme').addEventListener('click', closeLayer);
 $('themeBackdrop').addEventListener('click', closeLayer);
-matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePref === 'auto') applyTheme(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (theme.mode === 'auto') applyTheme(); });
 
 $('menuButton').addEventListener('click', () => openLayer('menu'));
 $('closeMenu').addEventListener('click', closeLayer);
