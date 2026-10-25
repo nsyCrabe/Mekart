@@ -10,6 +10,7 @@ const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
 const APP_VERSION = '5.0';
 const VIEW_KEY = 'loyalty_view_v1';
+const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
 const SNOOZE_KEY = 'loyalty_backup_snooze';
 
@@ -77,6 +78,7 @@ const ICONS = {
   image: mk('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="M21 16l-5-5-8 9"/>'),
   eye: mk('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
   eyeOff: mk('<path d="M3 3l18 18M10.6 5.1A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.5 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7c1.7 0 3.2-.4 4.5-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'),
+  lock: mk('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
   unlock: mk('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/>'),
   card: mk('<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/>'),
   gift: mk('<rect x="3" y="9" width="18" height="11" rx="2"/><path d="M12 9v11M3 13h18"/><path d="M12 9c-2.5 0-4-1-4-2.5S9 4 10.5 4C12 4 12 7 12 9zM12 9c2.5 0 4-1 4-2.5S15 4 13.5 4C12 4 12 7 12 9z"/>'),
@@ -270,7 +272,6 @@ const isDead = c => isSpent(c) || isExpired(c);
 const expiryText = c => { const n = dayDiff(c); return n === null ? '' : n < 0 ? 'Expirée' : n === 0 ? "Expire aujourd'hui" : `Expire dans ${n} j`; };
 function matchesFilter(c) {
   if (filter.kind === 'fav') return !!c.fav;
-  if (filter.kind === 'cagnotte') return c.balance != null;
   if (filter.kind === 'cat') return c.category === filter.value;
   if (filter.kind === 'tag') return (c.tags || []).some(t => norm(t) === filter.value);
   return true;
@@ -307,7 +308,6 @@ function renderFilters(pool) {
   };
   add('all', '', 'Toutes');
   if (pool.some(c => c.fav)) add('fav', '', '★ Favorites');
-  if (tab === 'loyalty' && pool.some(c => c.balance != null)) add('cagnotte', '', '💰 Avec cagnotte');
   CATEGORIES.filter(cat => pool.some(c => c.category === cat.id)).forEach(cat => add('cat', cat.id, `${cat.emoji} ${cat.name}`));
   const tags = new Map();
   pool.forEach(c => (c.tags || []).forEach(t => { const k = norm(t); if (!tags.has(k)) tags.set(k, t); }));
@@ -1076,6 +1076,53 @@ function maskCode() {
   $('cagnotteCodeShow').setAttribute('aria-label', 'Afficher le code');
   $('cagnotteCodeShow').dataset.shown = '';
 }
+/* ---------- Verrouillage biométrique du code cagnotte (réglage) ---------- */
+const bioOn = () => !!localStorage.getItem(BIO_KEY);
+const toB64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function updateBioButton() {
+  $('bioState').textContent = bioOn() ? 'Activé : empreinte, visage ou code du téléphone demandé' : 'Désactivé';
+  setIcon($('bioIcon'), bioOn() ? 'lock' : 'unlock');
+}
+async function bioEnable() {
+  if (!window.PublicKeyCredential) return toast('Biométrie indisponible sur ce navigateur.');
+  let ok = false;
+  try { ok = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); } catch {}
+  if (!ok) return toast("Aucun verrouillage d'écran (empreinte, visage ou code) détecté sur ce téléphone.");
+  try {
+    const cred = await navigator.credentials.create({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: 'Mes cartes' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'mes-cartes', displayName: 'Mes cartes' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
+      timeout: 60000
+    } });
+    localStorage.setItem(BIO_KEY, toB64u(cred.rawId));
+    toast('Verrouillage activé ✓');
+  } catch { toast('Activation annulée.'); }
+  updateBioButton();
+}
+/* Renvoie true si le code peut être affiché (réglage désactivé, ou déverrouillage réussi) */
+async function bioUnlock() {
+  if (!bioOn()) return true;
+  try {
+    await navigator.credentials.get({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ type: 'public-key', id: b64dec(localStorage.getItem(BIO_KEY)), transports: ['internal'] }],
+      userVerification: 'required', timeout: 60000
+    } });
+    return true;
+  } catch { toast('Déverrouillage annulé.'); return false; }
+}
+async function toggleBio() {
+  if (bioOn()) {
+    if (!(await bioUnlock())) return;
+    localStorage.removeItem(BIO_KEY);
+    toast('Verrouillage désactivé');
+    updateBioButton();
+  } else await bioEnable();
+}
+
 /* PIN de la carte : masqué par défaut */
 function maskPin() {
   $('pinText').textContent = '••••';
@@ -1094,12 +1141,13 @@ function refreshCodeRow(c) {
     $('cagnotteCodeShow').setAttribute('aria-label', 'Convertir les anciens codes');
   }
 }
-function toggleCode() {
+async function toggleCode() {
   const c = cards.find(x => x.id === openedId);
   if (!c || !c.cagnotteCode) return;
   if (isLegacyCode(c)) return convertLegacyCodes();
   const btn = $('cagnotteCodeShow');
   if (btn.dataset.shown === '1') return maskCode();
+  if (!(await bioUnlock())) return;
   $('cagnotteCodeText').textContent = c.cagnotteCode;
   setIcon(btn, 'eyeOff');
   btn.setAttribute('aria-label', 'Masquer le code');
@@ -1348,6 +1396,7 @@ $('searchToggle').addEventListener('click', () => {
   if (box.hidden) { box.hidden = false; $('searchInput').focus(); }
   else { $('searchInput').value = ''; box.hidden = true; render(); }
 });
+$('bioButton').addEventListener('click', toggleBio);
 $('viewButton').addEventListener('click', () => {
   viewMode = viewMode === 'list' ? 'grid' : 'list';
   localStorage.setItem(VIEW_KEY, viewMode);
@@ -1418,6 +1467,7 @@ $('categoryInput').replaceChildren(
 $('versionNote').textContent = `Version ${APP_VERSION}`;
 paintIcons();
 renderTemplates();
+updateBioButton();
 load();
 if (!cards.some(isLegacyCode)) localStorage.removeItem(VAULT_KEY);
 render();

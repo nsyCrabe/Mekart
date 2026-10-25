@@ -344,3 +344,6 @@ body{padding-bottom:calc(112px + var(--safe-b))}
 .progress span{display:block;height:100%;border-radius:999px;background:var(--accent);transition:width .3s}
 .code-box{margin-top:0}
 .code-box.big{z-index:300}
+
+/* Liste déroulante de tri : même look que les puces */
+.sort-select{appearance:none;-webkit-appearance:none;margin-left:0;max-width:none;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:.85rem;font-weight:700;text-align:center;text-align-last:center}
