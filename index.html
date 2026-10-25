@@ -1,1246 +1,280 @@
 <!DOCTYPE html>
-<html lang="fr" class="h-full bg-slate-950 text-slate-100">
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Mes Cartes - Portefeuille Numérique</title>
-  
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- FontAwesome & Phosphor Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
-  <!-- Libraries for Barcodes & QR codes -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode"></script>
-
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              50: '#f0f6ff',
-              500: '#3b82f6',
-              600: '#2563eb',
-              700: '#1d4ed8',
-            }
-          },
-          animation: {
-            'shine': 'shine 3s infinite linear',
-            'float': 'float 4s ease-in-out infinite',
-            'pulse-subtle': 'pulseSubtle 2s infinite',
-          },
-          keyframes: {
-            shine: {
-              '0%': { transform: 'translateX(-100%) translateY(-100%) rotate(25deg)' },
-              '100%': { transform: 'translateX(200%) translateY(200%) rotate(25deg)' }
-            },
-            float: {
-              '0%, 100%': { transform: 'translateY(0px)' },
-              '50%': { transform: 'translateY(-6px)' }
-            },
-            pulseSubtle: {
-              '0%, 100%': { opacity: 1 },
-              '50%': { opacity: 0.7 }
-            }
-          }
-        }
-      }
-    }
-  </script>
-
-  <style>
-    /* Custom Scrollbar Removal for iOS Feel */
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-
-    /* Glassmorphism Classes */
-    .glass-card {
-      background: rgba(255, 255, 255, 0.07);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-    
-    .glass-nav {
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    /* Wallet Card Styles & Shine Effect */
-    .wallet-card {
-      position: relative;
-      overflow: hidden;
-      border-radius: 1.25rem;
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-      transform-style: preserve-3d;
-    }
-
-    .wallet-card:active {
-      transform: scale(0.97);
-    }
-
-    .wallet-card::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: linear-gradient(
-        45deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.03) 40%,
-        rgba(255, 255, 255, 0.18) 50%,
-        rgba(255, 255, 255, 0.03) 60%,
-        transparent 100%
-      );
-      transform: rotate(25deg);
-      pointer-events: none;
-    }
-
-    .wallet-card:hover::before {
-      animation: shine 1.5s ease-out;
-    }
-
-    /* Card Micro Texture Overlay */
-    .card-texture {
-      background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 0);
-      background-size: 12px 12px;
-      opacity: 0.2;
-    }
-
-    /* High Contrast Mode for Barcodes */
-    .cashier-mode {
-      background-color: #ffffff !important;
-      color: #000000 !important;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mes cartes</title>
+<meta name="description" content="Toutes tes cartes de fidélité dans ta poche, même hors ligne.">
+<meta name="theme-color" content="#f4f7fb" id="themeColorMeta">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mes cartes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
 </head>
+<body data-theme="light">
 
-<body class="h-full font-sans antialiased selection:bg-blue-500 selection:text-white pb-24 md:pb-6">
+<header class="topbar">
+  <div>
+    <h1>Mes cartes</h1>
+    <p class="subtitle" id="cardCount">0 carte</p>
+  </div>
+  <div class="top-actions">
+    <button class="round-button" id="themeButton" aria-label="Choisir le thème">🎨</button>
+    <button class="round-button" id="menuButton" aria-label="Sauvegarde et réglages">⚙️</button>
+  </div>
+</header>
 
-  <!-- Toast Container -->
-  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
+<main>
+  <label class="search-box" for="searchInput">
+    <span aria-hidden="true">⌕</span>
+    <input id="searchInput" type="search" placeholder="Rechercher une carte" autocomplete="off">
+  </label>
 
-  <!-- Header App Bar -->
-  <header class="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
-    <div class="max-w-4xl mx-auto flex items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-          <i class="ph-bold ph-cards text-xl"></i>
-        </div>
-        <div>
-          <h1 class="font-bold text-lg leading-tight tracking-tight text-white">Mes Cartes</h1>
-          <p id="card-count-badge" class="text-xs text-slate-400 font-medium">0 carte enregistrée</p>
-        </div>
+  <div class="tabs" id="tabs" role="tablist">
+    <button class="tab active" id="tabLoyalty" role="tab" aria-selected="true" type="button">Cartes de fidélité <span id="countLoyalty">0</span></button>
+    <button class="tab" id="tabGift" role="tab" aria-selected="false" type="button">Cartes cadeaux <span id="countGift">0</span></button>
+  </div>
+  <button class="other-hint" id="otherHint" type="button" hidden></button>
+
+  <div class="toolbar" id="toolbar">
+    <div class="filter-row" id="filterRow" aria-label="Filtres"></div>
+    <div class="sort-row">
+      <select class="sort-select" id="sortSelect" aria-label="Trier les cartes">
+        <option value="recent">Récentes</option>
+        <option value="used">Plus utilisées</option>
+        <option value="az">A → Z</option>
+        <option value="manual">Mon ordre</option>
+      </select>
+      <button class="chip" id="reorderButton" type="button">↕ Réorganiser</button>
+    </div>
+  </div>
+  <div class="reorder-bar" id="reorderBar" hidden>
+    <span>Glisse les cartes pour les déplacer.</span>
+    <button class="text-button" id="reorderDone" type="button">Terminer</button>
+  </div>
+
+  <section class="quick-guide" id="quickGuide">
+    <span aria-hidden="true">✨</span>
+    <div>
+      <strong>Ajoute une carte en quelques secondes</strong>
+      <small>Scanne le code avec l'appareil photo, ou tape le numéro.</small>
+    </div>
+    <button id="hideGuide" aria-label="Masquer l'aide">×</button>
+  </section>
+
+  <section id="cardsGrid" class="cards-grid" aria-label="Mes cartes"></section>
+
+  <section id="emptyState" class="empty-state" hidden>
+    <div class="empty-icon" aria-hidden="true">💳</div>
+    <h2 id="emptyTitle">Aucune carte</h2>
+    <p id="emptyText">Ajoute ta première carte de fidélité pour la retrouver en caisse, même sans réseau.</p>
+    <button class="primary-button" id="emptyAddButton" type="button">Ajouter une carte</button>
+  </section>
+</main>
+
+<button class="add-button" id="addButton" type="button">+ Ajouter une carte</button>
+
+<!-- Formulaire -->
+<div class="backdrop" id="formBackdrop" hidden></div>
+<section class="sheet" id="formSheet" hidden aria-label="Carte">
+  <div class="handle"></div>
+  <div class="sheet-title">
+    <h2 id="formTitle">Nouvelle carte</h2>
+    <button class="close-button" id="closeForm" type="button" aria-label="Fermer">×</button>
+  </div>
+  <form id="cardForm" autocomplete="off">
+    <div class="segmented" id="kindSwitch" role="radiogroup" aria-label="Type de carte">
+      <button type="button" class="seg active" data-kind="loyalty">Fidélité</button>
+      <button type="button" class="seg" data-kind="gift">Cadeau</button>
+    </div>
+
+    <div class="logo-upload">
+      <button type="button" class="logo-preview" id="logoPreview" aria-label="Choisir un logo">🏪</button>
+      <div>
+        <strong>Logo du magasin</strong>
+        <p>Une image depuis ta galerie.</p>
+        <button type="button" class="text-button" id="chooseLogo">Choisir un logo</button>
+        <button type="button" class="text-button danger" id="removeLogo" hidden>Retirer</button>
       </div>
+      <input id="logoInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+    </div>
 
-      <div class="flex items-center gap-2">
-        <button onclick="openAddCardModal()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-lg shadow-blue-600/30">
-          <i class="ph-bold ph-plus"></i>
-          <span class="hidden sm:inline">Ajouter</span>
-        </button>
-        <button onclick="openSettingsModal()" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors" title="Paramètres">
-          <i class="ph-bold ph-gear text-xl"></i>
-        </button>
+    <label class="form-label" for="nameInput">Nom du magasin</label>
+    <input class="form-input" id="nameInput" required maxlength="40" placeholder="Ex. Carrefour">
+
+    <label class="form-label" for="categoryInput">Catégorie</label>
+    <select class="form-input" id="categoryInput"></select>
+
+    <label class="check-row" id="cagnotteRow"><input type="checkbox" id="cagnotteToggle"> <span>Cette carte a une cagnotte</span></label>
+    <div id="giftFields" hidden>
+      <label class="form-label" for="balanceInput" id="balanceLabel">Solde actuel (€)</label>
+      <input class="form-input" id="balanceInput" inputmode="decimal" placeholder="Ex. 25,00">
+      <div id="cagnotteCodeWrap">
+        <label class="form-label" for="cagnotteCodeInput">Code cagnotte (facultatif)</label>
+        <div class="code-row">
+          <input class="form-input masked" id="cagnotteCodeInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Saisis le code">
+          <button class="scan-button" id="cagnotteCodeEye" type="button" aria-label="Afficher ou masquer la saisie">👁</button>
+        </div>
+        <button class="text-button danger" id="removeCagnotteCode" type="button" hidden>Retirer le code enregistré</button>
+        <p class="field-hint">Visible sur la fiche de la carte avec le bouton 👁.</p>
       </div>
     </div>
-  </header>
 
-  <!-- Main Content Container -->
-  <main class="max-w-4xl mx-auto px-4 pt-4 space-y-6">
+    <label class="form-label" for="codeTypeInput">Type de code</label>
+    <select class="form-input" id="codeTypeInput">
+      <option value="barcode">Code-barres</option>
+      <option value="qrcode">QR code</option>
+      <option value="none">Aucun code</option>
+    </select>
 
-    <!-- Financial Summary Dashboard Widget -->
-    <section id="financial-dashboard" class="grid grid-cols-2 gap-3 sm:gap-4">
-      <div class="glass-card rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden group">
-        <div class="absolute -right-4 -bottom-4 opacity-10 text-blue-400 text-7xl group-hover:scale-110 transition-transform">
-          <i class="ph-fill ph-coins"></i>
-        </div>
-        <div class="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-          <i class="ph-bold ph-coins text-amber-400"></i>
-          <span>Total Cagnottes</span>
-        </div>
-        <div class="mt-2">
-          <span id="total-cagnottes" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">0,00 €</span>
-          <p class="text-[11px] text-slate-400 mt-0.5">Cumul fidélité disponible</p>
-        </div>
+    <div id="codeFields">
+      <label class="form-label" for="codeInput">Numéro de carte</label>
+      <div class="code-row">
+        <input class="form-input" id="codeInput" inputmode="text" placeholder="Saisis le numéro">
+        <button class="scan-button" id="scanButton" type="button" aria-label="Scanner avec l'appareil photo">📷</button>
+        <button class="scan-button" id="imageButton" type="button" aria-label="Lire le code depuis une image">🖼️</button>
+        <input id="imageInput" type="file" accept="image/*" hidden>
       </div>
+    </div>
 
-      <div class="glass-card rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden group">
-        <div class="absolute -right-4 -bottom-4 opacity-10 text-emerald-400 text-7xl group-hover:scale-110 transition-transform">
-          <i class="ph-fill ph-gift"></i>
-        </div>
-        <div class="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-          <i class="ph-bold ph-gift text-emerald-400"></i>
-          <span>Cartes Cadeaux</span>
-        </div>
-        <div class="mt-2">
-          <span id="total-cadeaux" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">0,00 €</span>
-          <p class="text-[11px] text-slate-400 mt-0.5">Solde marchand restant</p>
-        </div>
-      </div>
-    </section>
+    <label class="form-label" for="notesInput">Note (facultatif)</label>
+    <textarea class="form-input" id="notesInput" maxlength="300" placeholder="Ex. Code PIN, avantages, date de fin…"></textarea>
 
-    <!-- Search & Filters -->
-    <section class="space-y-3">
-      <div class="relative">
-        <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-        <input type="text" id="search-input" oninput="handleSearch()" placeholder="Rechercher une carte, un magasin..." 
-               class="w-full bg-slate-900/90 text-white placeholder-slate-400 pl-10 pr-10 py-3 rounded-xl border border-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-all shadow-inner">
-        <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1">
-          <i class="ph-bold ph-x-circle text-lg"></i>
-        </button>
-      </div>
-    </section>
+    <span class="form-label">Couleur de la carte</span>
+    <div class="color-row" id="colorRow"></div>
 
-    <!-- Quick Access Favorites Carousel -->
-    <section id="favorites-section" class="hidden space-y-2">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-          <i class="ph-fill ph-star text-amber-400"></i>
-          Accès Rapide (Favoris)
-        </h2>
-      </div>
-      <div id="favorites-carousel" class="flex gap-3 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
-        <!-- Favorites rendered dynamically -->
-      </div>
-    </section>
+    <div class="form-actions">
+      <button class="secondary-button" id="cancelForm" type="button">Annuler</button>
+      <button class="primary-button" type="submit">Enregistrer</button>
+    </div>
+  </form>
+</section>
 
-    <!-- Filter Tabs -->
-    <section class="border-b border-slate-800 pb-2">
-      <nav class="flex gap-2 overflow-x-auto no-scrollbar text-sm font-medium">
-        <button onclick="setTab('all')" id="tab-all" class="px-4 py-2 rounded-xl transition-all bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20 whitespace-nowrap">
-          Toutes (<span id="count-all">0</span>)
-        </button>
-        <button onclick="setTab('fidelite')" id="tab-fidelite" class="px-4 py-2 rounded-xl transition-all text-slate-400 hover:text-white hover:bg-slate-900 whitespace-nowrap">
-          Fidélité (<span id="count-fidelite">0</span>)
-        </button>
-        <button onclick="setTab('cadeau')" id="tab-cadeau" class="px-4 py-2 rounded-xl transition-all text-slate-400 hover:text-white hover:bg-slate-900 whitespace-nowrap">
-          Cartes Cadeaux (<span id="count-cadeau">0</span>)
-        </button>
-      </nav>
-    </section>
+<!-- Thèmes -->
+<div class="backdrop" id="themeBackdrop" hidden></div>
+<section class="sheet" id="themeSheet" hidden aria-label="Thème">
+  <div class="handle"></div>
+  <div class="sheet-title">
+    <h2>Choisir un thème</h2>
+    <button class="close-button" id="closeTheme" type="button" aria-label="Fermer">×</button>
+  </div>
+  <div class="theme-list" id="themeList"></div>
+</section>
 
-    <!-- Main Cards Grid -->
-    <section>
-      <div id="cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- Cards will be populated here dynamically -->
-      </div>
-
-      <!-- Empty State -->
-      <div id="empty-state" class="hidden flex-col items-center justify-center py-16 text-center space-y-4">
-        <div class="w-20 h-20 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 text-3xl">
-          <i class="ph-duotone ph-cardholder"></i>
-        </div>
-        <div class="max-w-xs">
-          <h3 class="text-base font-bold text-white">Aucune carte trouvée</h3>
-          <p class="text-xs text-slate-400 mt-1">Ajoutez votre première carte de fidélité ou carte cadeau pour la retrouver partout avec vous.</p>
-        </div>
-        <button onclick="openAddCardModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/30">
-          Ajouter une carte
-        </button>
-      </div>
-    </section>
-  </main>
-
-  <!-- Mobile Bottom Floating Navigation Dock -->
-  <nav class="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-11/12 max-w-md glass-nav rounded-2xl p-1.5 shadow-2xl flex items-center justify-around">
-    <button onclick="setTab('all'); setActiveDock('dock-home')" id="dock-home" class="dock-btn active flex flex-col items-center gap-0.5 py-1.5 px-4 rounded-xl text-blue-400 transition-all">
-      <i class="ph-fill ph-cards text-xl"></i>
-      <span class="text-[10px] font-semibold">Toutes</span>
+<!-- Menu / sauvegarde -->
+<div class="backdrop" id="menuBackdrop" hidden></div>
+<section class="sheet" id="menuSheet" hidden aria-label="Réglages">
+  <div class="handle"></div>
+  <div class="sheet-title">
+    <h2>Sauvegarde et réglages</h2>
+    <button class="close-button" id="closeMenu" type="button" aria-label="Fermer">×</button>
+  </div>
+  <div class="menu-list">
+    <button class="menu-item" id="exportButton" type="button">
+      <span class="menu-icon" aria-hidden="true">📤</span>
+      <span><strong>Exporter mes cartes</strong><small>Télécharge un fichier de sauvegarde</small></span>
     </button>
-    <button onclick="setTab('fidelite'); setActiveDock('dock-fidelite')" id="dock-fidelite" class="dock-btn flex flex-col items-center gap-0.5 py-1.5 px-4 rounded-xl text-slate-400 hover:text-white transition-all">
-      <i class="ph-bold ph-identification-card text-xl"></i>
-      <span class="text-[10px] font-semibold">Fidélité</span>
+    <button class="menu-item" id="importButton" type="button">
+      <span class="menu-icon" aria-hidden="true">📥</span>
+      <span><strong>Importer une sauvegarde</strong><small>Ajoute les cartes d'un fichier exporté</small></span>
     </button>
-    <button onclick="openAddCardModal()" class="flex flex-col items-center justify-center -mt-5 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white w-12 h-12 rounded-full shadow-lg shadow-blue-600/50 active:scale-95 transition-transform">
-      <i class="ph-bold ph-plus text-xl"></i>
+    <button class="menu-item" id="installButton" type="button" hidden>
+      <span class="menu-icon" aria-hidden="true">📲</span>
+      <span><strong>Installer l'application</strong><small>Ajoute-la à ton écran d'accueil</small></span>
     </button>
-    <button onclick="setTab('cadeau'); setActiveDock('dock-cadeau')" id="dock-cadeau" class="dock-btn flex flex-col items-center gap-0.5 py-1.5 px-4 rounded-xl text-slate-400 hover:text-white transition-all">
-      <i class="ph-bold ph-gift text-xl"></i>
-      <span class="text-[10px] font-semibold">Cadeaux</span>
+    <button class="menu-item" id="forceUpdateButton" type="button">
+      <span class="menu-icon" aria-hidden="true">🔄</span>
+      <span><strong>Forcer la mise à jour</strong><small>Recharge la dernière version, sans toucher à tes cartes</small></span>
     </button>
-    <button onclick="openSettingsModal()" class="dock-btn flex flex-col items-center gap-0.5 py-1.5 px-4 rounded-xl text-slate-400 hover:text-white transition-all">
-      <i class="ph-bold ph-gear text-xl"></i>
-      <span class="text-[10px] font-semibold">Options</span>
+    <button class="menu-item" id="showGuideButton" type="button">
+      <span class="menu-icon" aria-hidden="true">💡</span>
+      <span><strong>Réafficher l'aide</strong><small>Le bandeau de démarrage</small></span>
     </button>
-  </nav>
+  </div>
+  <input id="importInput" type="file" accept="application/json,.json" hidden>
+  <p class="menu-note">Tes cartes sont enregistrées uniquement sur cet appareil. Si tu changes de téléphone ou effaces les données du navigateur, elles disparaissent : exporte une sauvegarde de temps en temps.</p>
+  <p class="menu-note" id="versionNote"></p>
+</section>
 
-  <!-- MODAL 1: ADD / EDIT CARD -->
-  <div id="card-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-auto">
-      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-        <h3 id="modal-title" class="font-bold text-lg text-white">Nouvelle Carte</h3>
-        <button onclick="closeCardModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
-          <i class="ph-bold ph-x text-xl"></i>
-        </button>
-      </div>
+<!-- Fiche carte -->
+<div class="backdrop" id="detailBackdrop" hidden></div>
+<section class="detail-panel" id="detailPanel" hidden aria-label="Détail de la carte">
+  <div class="detail-toolbar">
+    <button class="close-button" id="closeDetail" type="button" aria-label="Fermer">×</button>
+    <div class="detail-actions">
+      <button class="tool-button" id="favCard" type="button" aria-label="Favori">☆</button>
+      <button class="tool-button" id="editCard" type="button" aria-label="Modifier">✏️</button>
+      <button class="tool-button" id="deleteCard" type="button" aria-label="Supprimer">🗑️</button>
+    </div>
+  </div>
+  <div class="detail-logo" id="detailLogo"></div>
+  <h2 id="detailName"></h2>
+  <p class="detail-type" id="detailType"></p>
+  <div class="detail-meta" id="detailMeta" hidden></div>
 
-      <form id="card-form" onsubmit="saveCard(event)" class="p-6 space-y-4">
-        <input type="hidden" id="card-id">
-
-        <!-- Store Name with Auto-Suggest -->
-        <div class="space-y-1 relative">
-          <label class="text-xs font-semibold text-slate-300">Enseigne / Magasin *</label>
-          <input type="text" id="card-name" required oninput="handleBrandInput(this.value)" placeholder="ex. Carrefour, Decathlon, Fnac..." 
-                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm">
-          
-          <!-- Auto completion suggestions box -->
-          <div id="brand-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto divide-y divide-slate-700/50"></div>
-        </div>
-
-        <!-- Type Selector -->
-        <div class="grid grid-cols-2 gap-3">
-          <label class="cursor-pointer">
-            <input type="radio" name="card-type" value="fidelite" checked onchange="toggleTypeFields()" class="peer sr-only">
-            <div class="p-3 rounded-xl border border-slate-800 bg-slate-950 text-center peer-checked:border-blue-500 peer-checked:bg-blue-600/10 peer-checked:text-blue-400 transition-all">
-              <i class="ph-bold ph-identification-card text-lg block mb-1"></i>
-              <span class="text-xs font-semibold">Carte Fidélité</span>
-            </div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="card-type" value="cadeau" onchange="toggleTypeFields()" class="peer sr-only">
-            <div class="p-3 rounded-xl border border-slate-800 bg-slate-950 text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-600/10 peer-checked:text-emerald-400 transition-all">
-              <i class="ph-bold ph-gift text-lg block mb-1"></i>
-              <span class="text-xs font-semibold">Carte Cadeau</span>
-            </div>
-          </label>
-        </div>
-
-        <!-- Code Number & Scan Button -->
-        <div class="space-y-1">
-          <label class="text-xs font-semibold text-slate-300">Numéro de carte / Code-barres *</label>
-          <div class="flex gap-2">
-            <input type="text" id="card-number" required placeholder="Saisir ou scanner le code" 
-                   class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm font-mono">
-            <button type="button" onclick="openScannerModal()" class="bg-slate-800 hover:bg-slate-700 text-blue-400 px-4 rounded-xl flex items-center gap-2 text-sm font-medium transition-colors">
-              <i class="ph-bold ph-qr-code text-lg"></i>
-              <span>Scan</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Barcode Format -->
-        <div class="space-y-1">
-          <label class="text-xs font-semibold text-slate-300">Format de code</label>
-          <select id="card-format" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 text-sm">
-            <option value="CODE128">Code-barres classique (Code 128)</option>
-            <option value="EAN13">EAN-13 (13 chiffres)</option>
-            <option value="EAN8">EAN-8 (8 chiffres)</option>
-            <option value="QR">Code QR</option>
-          </select>
-        </div>
-
-        <!-- Dynamic Fields based on type -->
-        <div id="fidelity-fields" class="space-y-1">
-          <label class="text-xs font-semibold text-slate-300">Solde Cagnotte (€) - optionnel</label>
-          <input type="number" step="0.01" id="card-cagnotte" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm">
-        </div>
-
-        <div id="gift-fields" class="hidden space-y-3">
-          <div class="grid grid-cols-2 gap-3">
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-slate-300">Solde Carte (€) *</label>
-              <input type="number" step="0.01" id="card-balance" placeholder="50.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm">
-            </div>
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-slate-300">Date d'expiration</label>
-              <input type="date" id="card-expiry" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 text-sm">
-            </div>
-          </div>
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-slate-300">Code PIN / CVV (optionnel)</label>
-            <input type="text" id="card-pin" placeholder="ex. 1234" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm font-mono">
-          </div>
-        </div>
-
-        <!-- Card Gradient Customization -->
-        <div class="space-y-1">
-          <label class="text-xs font-semibold text-slate-300">Style & Couleur de la carte</label>
-          <div class="flex items-center gap-2">
-            <input type="color" id="card-color1" value="#2563eb" onchange="updateGradientPreview()" class="w-10 h-10 rounded-xl bg-transparent cursor-pointer border-0">
-            <input type="color" id="card-color2" value="#1d4ed8" onchange="updateGradientPreview()" class="w-10 h-10 rounded-xl bg-transparent cursor-pointer border-0">
-            <div id="gradient-preview" class="flex-1 h-10 rounded-xl border border-slate-800 shadow-inner"></div>
-          </div>
-        </div>
-
-        <div class="pt-4 flex gap-3">
-          <button type="button" onclick="closeCardModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 rounded-xl transition-colors text-sm">Annuler</button>
-          <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-lg shadow-blue-600/30">Enregistrer</button>
-        </div>
-      </form>
+  <div class="cagnotte-box" id="cagnotteBox" hidden>
+    <div class="cagnotte-view" id="cagnotteView">
+      <div><small>Cagnotte</small><strong id="cagnotteValue">0,00 €</strong></div>
+      <button class="tool-button" id="cagnotteEdit" type="button" aria-label="Modifier la cagnotte">✏️</button>
+    </div>
+    <div class="cagnotte-code" id="cagnotteCodeRow" hidden>
+      <div class="code-info"><span class="code-label">Code cagnotte</span><strong id="cagnotteCodeText">••••••</strong></div>
+      <button class="tool-button" id="cagnotteCodeShow" type="button" aria-label="Afficher le code">👁</button>
+    </div>
+    <div class="cagnotte-editor" id="cagnotteEditor" hidden>
+      <input class="form-input" id="cagnotteInput" inputmode="decimal" placeholder="Nouveau montant (€)" aria-label="Nouveau montant de la cagnotte">
+      <button class="tool-button ok" id="cagnotteSave" type="button" aria-label="Valider">✓</button>
+      <button class="tool-button" id="cagnotteCancel" type="button" aria-label="Annuler">✕</button>
     </div>
   </div>
 
-  <!-- MODAL 2: CARD DETAIL VIEW & CASHIER DISPLAY (WITH SWIPE & Awake Lock) -->
-  <div id="detail-modal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-    <div id="detail-container" class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden transition-all transform">
-      
-      <!-- Modal Top Header -->
-      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
-        <button onclick="toggleFavoriteCurrent()" id="detail-fav-btn" class="p-2 text-slate-400 hover:text-amber-400 transition-colors">
-          <i class="ph-bold ph-star text-xl"></i>
-        </button>
-        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Passer en caisse</span>
-        <button onclick="closeDetailModal()" class="p-2 text-slate-400 hover:text-white transition-colors">
-          <i class="ph-bold ph-x text-xl"></i>
-        </button>
-      </div>
-
-      <!-- Swipe Area -->
-      <div id="swipe-area" class="p-6 space-y-6">
-        <!-- Rendered Card Graphic -->
-        <div id="detail-card-visual" class="wallet-card p-6 h-48 flex flex-col justify-between text-white shadow-2xl relative">
-          <div class="card-texture absolute inset-0"></div>
-          <div class="flex items-start justify-between z-10">
-            <div>
-              <p id="detail-card-type" class="text-[10px] uppercase font-bold tracking-widest opacity-80">Carte Fidélité</p>
-              <h2 id="detail-card-name" class="text-2xl font-black tracking-tight mt-0.5">Carrefour</h2>
-            </div>
-            <div id="detail-card-icon" class="text-3xl opacity-90">
-              <i class="ph-fill ph-storefront"></i>
-            </div>
-          </div>
-
-          <div class="z-10 flex justify-between items-end">
-            <div>
-              <p class="text-[10px] opacity-75 uppercase tracking-wider">Numéro</p>
-              <p id="detail-card-num-sub" class="font-mono text-sm tracking-widest">•••• 1234</p>
-            </div>
-            <div id="detail-balance-badge" class="text-right">
-              <!-- Cagnotte / Solde badge -->
-            </div>
-          </div>
-        </div>
-
-        <!-- High-contrast Barcode Container for Cashier -->
-        <div id="barcode-wrapper" class="bg-white p-5 rounded-2xl shadow-xl flex flex-col items-center justify-center space-y-3 transition-colors">
-          <div class="w-full flex justify-center overflow-x-auto py-2">
-            <svg id="detail-barcode" class="max-w-full"></svg>
-            <div id="detail-qrcode" class="hidden"></div>
-          </div>
-          <p id="detail-barcode-text" class="font-mono text-slate-900 font-bold text-base tracking-wider text-center select-all"></p>
-        </div>
-
-        <!-- Controls: Cashier Screen Boost Toggle -->
-        <div class="flex items-center justify-between gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
-          <span class="text-slate-300 font-medium flex items-center gap-2">
-            <i class="ph-bold ph-sun text-amber-400 text-base"></i>
-            Mode Douchette / Caisse
-          </span>
-          <button onclick="toggleCashierHighContrast()" id="cashier-toggle-btn" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors">
-            Fond Blanc
-          </button>
-        </div>
-
-        <!-- Quick Balance Adjuster (for Gift Card or Cagnotte) -->
-        <div id="balance-editor-box" class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ajuster le solde</span>
-            <span id="detail-expiry-tag" class="text-xs text-amber-400 font-medium"></span>
-          </div>
-          <div class="flex gap-2">
-            <input type="number" step="0.01" id="quick-balance-input" placeholder="Nouveau solde" 
-                   class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 font-mono">
-            <button onclick="updateCardBalanceFromDetail()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 rounded-xl transition-colors">
-              Mettre à jour
-            </button>
-          </div>
-        </div>
-
-        <!-- Swipe Navigation Indicator -->
-        <div class="flex items-center justify-between text-slate-500 text-xs pt-2">
-          <button onclick="navigateDetailCard(-1)" class="hover:text-white flex items-center gap-1">
-            <i class="ph-bold ph-caret-left"></i> Précédente
-          </button>
-          <span class="text-[10px] tracking-widest uppercase">Glisser pour changer</span>
-          <button onclick="navigateDetailCard(1)" class="hover:text-white flex items-center gap-1">
-            Suivante <i class="ph-bold ph-caret-right"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Action Footer -->
-      <div class="p-4 border-t border-slate-800 bg-slate-950 flex gap-3">
-        <button onclick="editCurrentCard()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 rounded-xl transition-colors text-xs flex items-center justify-center gap-2">
-          <i class="ph-bold ph-pencil"></i> Modifier
-        </button>
-        <button onclick="deleteCurrentCard()" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-800/50 px-4 py-2.5 rounded-xl transition-colors text-xs font-semibold flex items-center justify-center gap-2">
-          <i class="ph-bold ph-trash"></i>
-        </button>
-      </div>
-
+  <div class="balance-box" id="balanceBox" hidden>
+    <div class="balance-top">
+      <div><small id="balanceCaption">Solde restant</small><strong id="balanceValue">0,00 €</strong></div>
+      <button class="text-button" id="toggleHistory" type="button">Historique</button>
     </div>
+    <div class="balance-form">
+      <input class="form-input" id="amountInput" inputmode="decimal" placeholder="Montant (€)" aria-label="Montant">
+      <input class="form-input" id="amountNote" maxlength="40" placeholder="Note (facultatif)" aria-label="Note">
+      <div class="balance-actions">
+        <button class="secondary-button spend" id="spendButton" type="button">− Dépense</button>
+        <button class="secondary-button" id="topupButton" type="button">+ Recharge</button>
+      </div>
+    </div>
+    <ul class="history-list" id="historyList" hidden></ul>
+    <button class="text-button" id="undoLast" type="button" hidden>Annuler la dernière opération</button>
   </div>
 
-  <!-- MODAL 3: BARCODE / QR CAMERA SCANNER -->
-  <div id="scanner-modal" class="hidden fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-between p-4">
-    <div class="w-full max-w-md flex items-center justify-between py-2 text-white">
-      <h3 class="font-bold text-base">Scanner un Code-Barres / QR</h3>
-      <button onclick="closeScannerModal()" class="p-2 text-slate-400 hover:text-white">
-        <i class="ph-bold ph-x text-xl"></i>
-      </button>
-    </div>
-
-    <div class="w-full max-w-md my-auto relative overflow-hidden rounded-2xl border-2 border-blue-500/50 bg-slate-900">
-      <div id="interactive-reader" class="w-full"></div>
-    </div>
-
-    <div class="w-full max-w-md py-4 text-center">
-      <p class="text-xs text-slate-400">Pointez l'appareil photo vers le code-barres de la carte physique.</p>
-    </div>
+  <div class="code-box" id="codeBox" role="button" tabindex="0" aria-label="Agrandir le code" hidden>
+    <svg id="barcodeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="qrHolder"></div>
+    <p class="detail-code" id="detailCode"></p>
+    <p class="code-hint" id="codeHint">Touche pour agrandir</p>
   </div>
+  <div class="copy-row"><button class="text-button" id="copyCode" type="button" hidden>Copier le numéro</button></div>
+  <p class="detail-notes" id="detailNotes" hidden></p>
+  <button class="primary-button wide" id="closeDetailButton" type="button">Terminer</button>
+</section>
 
-  <!-- MODAL 4: SETTINGS & BACKUP -->
-  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-        <h3 class="font-bold text-base text-white">Paramètres & Données</h3>
-        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1">
-          <i class="ph-bold ph-x text-xl"></i>
-        </button>
-      </div>
-
-      <div class="p-6 space-y-6">
-        <!-- Import / Export -->
-        <div class="space-y-3">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Sauvegarde des cartes</h4>
-          <div class="grid grid-cols-2 gap-3">
-            <button onclick="exportData()" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl text-xs transition-colors">
-              <i class="ph-bold ph-download-simple text-base"></i> Export JSON
-            </button>
-            <label class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl text-xs transition-colors cursor-pointer">
-              <i class="ph-bold ph-upload-simple text-base"></i> Import JSON
-              <input type="file" id="import-file" accept=".json" onchange="importData(event)" class="sr-only">
-            </label>
-          </div>
-        </div>
-
-        <!-- Danger Zone -->
-        <div class="space-y-3 pt-4 border-t border-slate-800">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-rose-400">Zone de danger</h4>
-          <button onclick="clearAllData()" class="w-full bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-800/50 font-semibold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2">
-            <i class="ph-bold ph-trash"></i> Effacer toutes les cartes
-          </button>
-        </div>
-      </div>
-    </div>
+<!-- Scanner -->
+<section class="scanner" id="scanner" hidden aria-label="Scanner">
+  <div class="scanner-head">
+    <strong>Scanner le code</strong>
+    <button id="closeScanner" type="button">Fermer ×</button>
   </div>
-
-
-  <!-- JAVASCRIPT APPLICATION LOGIC -->
-  <script>
-    /* ==========================================================================
-       1. BRAND PRESETS & AUTO-COMPLETION DATABASE
-       ========================================================================== */
-    const BRAND_PRESETS = [
-      { name: 'Carrefour', color1: '#0055a5', color2: '#e2001a', icon: 'ph-storefront' },
-      { name: 'Decathlon', color1: '#0082c3', color2: '#004b75', icon: 'ph-barbell' },
-      { name: 'Fnac', color1: '#e1a100', color2: '#a37400', icon: 'ph-book-open' },
-      { name: 'Sephora', color1: '#000000', color2: '#222222', icon: 'ph-sparkle' },
-      { name: 'IKEA', color1: '#0058a3', color2: '#ffcc00', icon: 'ph-house-line' },
-      { name: 'Leclerc', color1: '#0066b2', color2: '#e30613', icon: 'ph-shopping-cart' },
-      { name: 'Auchan', color1: '#e2001a', color2: '#990011', icon: 'ph-shopping-bag' },
-      { name: 'Boulanger', color1: '#ff6600', color2: '#cc5200', icon: 'ph-desktop' },
-      { name: 'Leroy Merlin', color1: '#009900', color2: '#006600', icon: 'ph-wrench' },
-      { name: 'McDonald\'s', color1: '#00592d', color2: '#ffbc0d', icon: 'ph-hamburger' },
-      { name: 'Starbucks', color1: '#00704a', color2: '#00422c', icon: 'ph-coffee' },
-      { name: 'Monoprix', color1: '#e2001a', color2: '#111111', icon: 'ph-basket' },
-      { name: 'Lidl', color1: '#0050aa', color2: '#fff000', icon: 'ph-storefront' },
-      { name: 'Action', color1: '#00a0e2', color2: '#006699', icon: 'ph-tag' },
-      { name: 'Picard', color1: '#003399', color2: '#001a4d', icon: 'ph-snowflake' },
-    ];
-
-    /* ==========================================================================
-       2. GLOBAL STATE & STORAGE
-       ========================================================================== */
-    const STORAGE_KEY = 'loyalty_cards_v1';
-    let cards = [];
-    let currentFilter = 'all';
-    let searchQuery = '';
-    let currentDetailCardId = null;
-    let html5QrCode = null;
-    let wakeLock = null;
-
-    // Load initial data
-    window.addEventListener('DOMContentLoaded', () => {
-      loadCards();
-      renderApp();
-      setupTouchSwipe();
-    });
-
-    function loadCards() {
-      const data = localStorage.getItem(STORAGE_KEY);
-      cards = data ? JSON.parse(data) : [];
-    }
-
-    function saveCards() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-      renderApp();
-    }
-
-    /* ==========================================================================
-       3. UI RENDERING ENGINE
-       ========================================================================== */
-    function renderApp() {
-      renderDashboard();
-      renderFavorites();
-      renderCardsGrid();
-      updateBadgeCounts();
-    }
-
-    // Render Dashboard Stats (Total Cagnottes & Cartes Cadeaux)
-    function renderDashboard() {
-      const totalCagnottes = cards
-        .filter(c => c.type === 'fidelite' && c.cagnotte)
-        .reduce((sum, c) => sum + parseFloat(c.cagnotte || 0), 0);
-
-      const totalCadeaux = cards
-        .filter(c => c.type === 'cadeau' && c.balance)
-        .reduce((sum, c) => sum + parseFloat(c.balance || 0), 0);
-
-      document.getElementById('total-cagnottes').textContent = totalCagnottes.toFixed(2) + ' €';
-      document.getElementById('total-cadeaux').textContent = totalCadeaux.toFixed(2) + ' €';
-    }
-
-    // Render Favorites Quick Carousel
-    function renderFavorites() {
-      const favs = cards.filter(c => c.favorite);
-      const section = document.getElementById('favorites-section');
-      const container = document.getElementById('favorites-carousel');
-
-      if (favs.length === 0) {
-        section.classList.add('hidden');
-        return;
-      }
-
-      section.classList.remove('hidden');
-      container.innerHTML = favs.map(card => `
-        <div onclick="openDetailModal('${card.id}')" 
-             style="background: linear-gradient(135deg, ${card.color1 || '#2563eb'}, ${card.color2 || '#1d4ed8'})"
-             class="wallet-card shrink-0 w-36 h-24 p-3 flex flex-col justify-between cursor-pointer select-none text-white">
-          <div class="card-texture absolute inset-0"></div>
-          <div class="flex items-center justify-between z-10">
-            <span class="font-bold text-xs truncate max-w-[90px]">${escapeHtml(card.name)}</span>
-            <i class="ph-fill ph-star text-amber-300 text-xs"></i>
-          </div>
-          <div class="z-10">
-            <p class="font-mono text-[10px] opacity-80">•••• ${card.number.slice(-4)}</p>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // Render Main Grid with Filters & Search
-    function renderCardsGrid() {
-      const grid = document.getElementById('cards-grid');
-      const emptyState = document.getElementById('empty-state');
-
-      let filtered = cards.filter(card => {
-        const matchesFilter = (currentFilter === 'all') || (card.type === currentFilter);
-        const matchesSearch = card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              card.number.includes(searchQuery);
-        return matchesFilter && matchesSearch;
-      });
-
-      if (filtered.length === 0) {
-        grid.innerHTML = '';
-        emptyState.classList.remove('hidden');
-        emptyState.classList.add('flex');
-        return;
-      }
-
-      emptyState.classList.add('hidden');
-      emptyState.classList.remove('flex');
-
-      grid.innerHTML = filtered.map(card => {
-        const isGift = card.type === 'cadeau';
-        const balanceText = isGift 
-          ? `${parseFloat(card.balance || 0).toFixed(2)} €`
-          : (card.cagnotte ? `${parseFloat(card.cagnotte).toFixed(2)} €` : null);
-
-        return `
-          <div onclick="openDetailModal('${card.id}')" 
-               style="background: linear-gradient(135deg, ${card.color1 || '#2563eb'}, ${card.color2 || '#1d4ed8'})"
-               class="wallet-card p-5 h-44 flex flex-col justify-between text-white cursor-pointer select-none group">
-            
-            <div class="card-texture absolute inset-0"></div>
-
-            <div class="flex items-start justify-between z-10">
-              <div>
-                <span class="text-[9px] uppercase tracking-widest font-bold opacity-75">
-                  ${isGift ? 'Carte Cadeau' : 'Carte Fidélité'}
-                </span>
-                <h3 class="font-extrabold text-xl tracking-tight leading-snug truncate max-w-[180px]">
-                  ${escapeHtml(card.name)}
-                </h3>
-              </div>
-              <button onclick="event.stopPropagation(); toggleFavorite('${card.id}')" class="p-1.5 text-white/70 hover:text-amber-300 transition-colors">
-                <i class="${card.favorite ? 'ph-fill ph-star text-amber-300' : 'ph-bold ph-star'} text-lg"></i>
-              </button>
-            </div>
-
-            <div class="z-10 flex items-end justify-between">
-              <div>
-                <p class="text-[9px] uppercase tracking-wider opacity-70">Code</p>
-                <p class="font-mono text-xs font-semibold tracking-widest opacity-90">•••• ${card.number.slice(-4)}</p>
-              </div>
-
-              ${balanceText ? `
-                <div class="bg-black/30 backdrop-blur-md px-3 py-1 rounded-xl border border-white/10 text-right">
-                  <p class="text-[8px] uppercase tracking-wider opacity-75">${isGift ? 'Solde' : 'Cagnotte'}</p>
-                  <p class="font-extrabold text-sm text-emerald-300">${balanceText}</p>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function updateBadgeCounts() {
-      const all = cards.length;
-      const fidelite = cards.filter(c => c.type === 'fidelite').length;
-      const cadeau = cards.filter(c => c.type === 'cadeau').length;
-
-      document.getElementById('card-count-badge').textContent = `${all} carte${all > 1 ? 's' : ''} enregistrée${all > 1 ? 's' : ''}`;
-      document.getElementById('count-all').textContent = all;
-      document.getElementById('count-fidelite').textContent = fidelite;
-      document.getElementById('count-cadeau').textContent = cadeau;
-    }
-
-    /* ==========================================================================
-       4. AUTO-SUGGEST & BRAND MATCHING
-       ========================================================================== */
-    function handleBrandInput(query) {
-      const box = document.getElementById('brand-suggestions');
-      if (!query || query.trim().length < 1) {
-        box.classList.add('hidden');
-        return;
-      }
-
-      const matches = BRAND_PRESETS.filter(b => b.name.toLowerCase().includes(query.toLowerCase()));
-      if (matches.length === 0) {
-        box.classList.add('hidden');
-        return;
-      }
-
-      box.innerHTML = matches.map(brand => `
-        <div onclick="selectBrandPreset('${brand.name}', '${brand.color1}', '${brand.color2}')" 
-             class="p-2.5 hover:bg-slate-700/60 cursor-pointer flex items-center justify-between transition-colors">
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 rounded-full" style="background: linear-gradient(135deg, ${brand.color1}, ${brand.color2})"></div>
-            <span class="text-xs font-semibold text-white">${brand.name}</span>
-          </div>
-          <i class="ph-bold ph-caret-right text-xs text-slate-400"></i>
-        </div>
-      `).join('');
-
-      box.classList.remove('hidden');
-    }
-
-    function selectBrandPreset(name, color1, color2) {
-      document.getElementById('card-name').value = name;
-      document.getElementById('card-color1').value = color1;
-      document.getElementById('card-color2').value = color2;
-      document.getElementById('brand-suggestions').classList.add('hidden');
-      updateGradientPreview();
-    }
-
-    function updateGradientPreview() {
-      const c1 = document.getElementById('card-color1').value;
-      const c2 = document.getElementById('card-color2').value;
-      document.getElementById('gradient-preview').style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
-    }
-
-    /* ==========================================================================
-       5. CARD FORM MODAL ACTIONS
-       ========================================================================== */
-    function openAddCardModal() {
-      triggerHaptic();
-      document.getElementById('card-form').reset();
-      document.getElementById('card-id').value = '';
-      document.getElementById('modal-title').textContent = 'Nouvelle Carte';
-      document.getElementById('card-color1').value = '#2563eb';
-      document.getElementById('card-color2').value = '#1d4ed8';
-      updateGradientPreview();
-      toggleTypeFields();
-      document.getElementById('card-modal').classList.remove('hidden');
-    }
-
-    function closeCardModal() {
-      document.getElementById('card-modal').classList.add('hidden');
-      document.getElementById('brand-suggestions').classList.add('hidden');
-    }
-
-    function toggleTypeFields() {
-      const type = document.querySelector('input[name="card-type"]:checked').value;
-      const fideliteBox = document.getElementById('fidelity-fields');
-      const giftBox = document.getElementById('gift-fields');
-
-      if (type === 'fidelite') {
-        fideliteBox.classList.remove('hidden');
-        giftBox.classList.add('hidden');
-      } else {
-        fideliteBox.classList.add('hidden');
-        giftBox.classList.remove('hidden');
-      }
-    }
-
-    function saveCard(event) {
-      event.preventDefault();
-      const id = document.getElementById('card-id').value || 'card_' + Date.now();
-      const name = document.getElementById('card-name').value.trim();
-      const type = document.querySelector('input[name="card-type"]:checked').value;
-      const number = document.getElementById('card-number').value.trim();
-      const format = document.getElementById('card-format').value;
-      const color1 = document.getElementById('card-color1').value;
-      const color2 = document.getElementById('card-color2').value;
-
-      const existingIndex = cards.findIndex(c => c.id === id);
-      const isFav = existingIndex !== -1 ? cards[existingIndex].favorite : false;
-
-      const cardData = {
-        id,
-        name,
-        type,
-        number,
-        format,
-        color1,
-        color2,
-        favorite: isFav,
-        updatedAt: new Date().toISOString()
-      };
-
-      if (type === 'fidelite') {
-        cardData.cagnotte = document.getElementById('card-cagnotte').value;
-      } else {
-        cardData.balance = document.getElementById('card-balance').value;
-        cardData.expiry = document.getElementById('card-expiry').value;
-        cardData.pin = document.getElementById('card-pin').value;
-      }
-
-      if (existingIndex !== -1) {
-        cards[existingIndex] = cardData;
-        showToast('Carte mise à jour');
-      } else {
-        cards.unshift(cardData);
-        showToast('Nouvelle carte ajoutée');
-      }
-
-      saveCards();
-      closeCardModal();
-    }
-
-    /* ==========================================================================
-       6. DETAIL MODAL & CASHIER SCREEN OPTIMIZATION
-       ========================================================================== */
-    function openDetailModal(id) {
-      triggerHaptic();
-      currentDetailCardId = id;
-      const card = cards.find(c => c.id === id);
-      if (!card) return;
-
-      // Render Visual Header Card
-      const visual = document.getElementById('detail-card-visual');
-      visual.style.background = `linear-gradient(135deg, ${card.color1 || '#2563eb'}, ${card.color2 || '#1d4ed8'})`;
-
-      document.getElementById('detail-card-type').textContent = card.type === 'cadeau' ? 'Carte Cadeau' : 'Carte Fidélité';
-      document.getElementById('detail-card-name').textContent = card.name;
-      document.getElementById('detail-card-num-sub').textContent = card.number;
-
-      // Balance Badge
-      const balanceBox = document.getElementById('detail-balance-badge');
-      if (card.type === 'cadeau') {
-        balanceBox.innerHTML = `
-          <p class="text-[9px] opacity-75 uppercase">Solde Restant</p>
-          <p class="text-xl font-black text-emerald-300">${parseFloat(card.balance || 0).toFixed(2)} €</p>
-        `;
-      } else if (card.cagnotte) {
-        balanceBox.innerHTML = `
-          <p class="text-[9px] opacity-75 uppercase">Cagnotte</p>
-          <p class="text-xl font-black text-amber-300">${parseFloat(card.cagnotte).toFixed(2)} €</p>
-        `;
-      } else {
-        balanceBox.innerHTML = '';
-      }
-
-      // Quick Balance Input Field
-      const input = document.getElementById('quick-balance-input');
-      input.value = card.type === 'cadeau' ? (card.balance || '') : (card.cagnotte || '');
-
-      const expiryTag = document.getElementById('detail-expiry-tag');
-      expiryTag.textContent = card.expiry ? `Exp: ${card.expiry}` : '';
-
-      // Fav Star Button
-      const favBtn = document.getElementById('detail-fav-btn');
-      favBtn.innerHTML = `<i class="${card.favorite ? 'ph-fill ph-star text-amber-400' : 'ph-bold ph-star'} text-xl"></i>`;
-
-      // Render Barcode
-      renderBarcodeInDetail(card);
-
-      // Request Screen Wake Lock for Cashier
-      requestWakeLock();
-
-      document.getElementById('detail-modal').classList.remove('hidden');
-    }
-
-    function renderBarcodeInDetail(card) {
-      const barcodeSvg = document.getElementById('detail-barcode');
-      const qrcodeDiv = document.getElementById('detail-qrcode');
-      const textLabel = document.getElementById('detail-barcode-text');
-
-      textLabel.textContent = card.number;
-
-      if (card.format === 'QR') {
-        barcodeSvg.classList.add('hidden');
-        qrcodeDiv.classList.remove('hidden');
-        qrcodeDiv.innerHTML = '';
-        new QRCode(qrcodeDiv, {
-          text: card.number,
-          width: 180,
-          height: 180,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
-      } else {
-        qrcodeDiv.classList.add('hidden');
-        barcodeSvg.classList.remove('hidden');
-        try {
-          JsBarcode("#detail-barcode", card.number, {
-            format: card.format || "CODE128",
-            lineColor: "#000000",
-            width: 2,
-            height: 80,
-            displayValue: false
-          });
-        } catch (e) {
-          // Fallback if formatting fails
-          JsBarcode("#detail-barcode", card.number, { format: "CODE128", displayValue: false });
-        }
-      }
-    }
-
-    function toggleCashierHighContrast() {
-      const wrapper = document.getElementById('barcode-wrapper');
-      wrapper.classList.toggle('cashier-mode');
-      showToast('Luminosité maximale recommandée');
-    }
-
-    function closeDetailModal() {
-      document.getElementById('detail-modal').classList.add('hidden');
-      releaseWakeLock();
-    }
-
-    function navigateDetailCard(direction) {
-      if (!currentDetailCardId) return;
-      const currentIndex = cards.findIndex(c => c.id === currentDetailCardId);
-      if (currentIndex === -1) return;
-
-      let nextIndex = currentIndex + direction;
-      if (nextIndex < 0) nextIndex = cards.length - 1;
-      if (nextIndex >= cards.length) nextIndex = 0;
-
-      openDetailModal(cards[nextIndex].id);
-    }
-
-    function updateCardBalanceFromDetail() {
-      if (!currentDetailCardId) return;
-      const card = cards.find(c => c.id === currentDetailCardId);
-      if (!card) return;
-
-      const val = document.getElementById('quick-balance-input').value;
-      if (card.type === 'cadeau') {
-        card.balance = val;
-      } else {
-        card.cagnotte = val;
-      }
-
-      saveCards();
-      openDetailModal(card.id);
-      showToast('Solde mis à jour');
-    }
-
-    function toggleFavoriteCurrent() {
-      if (!currentDetailCardId) return;
-      toggleFavorite(currentDetailCardId);
-      openDetailModal(currentDetailCardId);
-    }
-
-    function toggleFavorite(id) {
-      triggerHaptic();
-      const card = cards.find(c => c.id === id);
-      if (card) {
-        card.favorite = !card.favorite;
-        saveCards();
-      }
-    }
-
-    function editCurrentCard() {
-      if (!currentDetailCardId) return;
-      const card = cards.find(c => c.id === currentDetailCardId);
-      if (!card) return;
-
-      closeDetailModal();
-
-      document.getElementById('card-id').value = card.id;
-      document.getElementById('card-name').value = card.name;
-      document.getElementById('card-number').value = card.number;
-      document.getElementById('card-format').value = card.format || 'CODE128';
-      document.getElementById('card-color1').value = card.color1 || '#2563eb';
-      document.getElementById('card-color2').value = card.color2 || '#1d4ed8';
-
-      const typeRadios = document.querySelectorAll('input[name="card-type"]');
-      typeRadios.forEach(r => r.checked = (r.value === card.type));
-
-      toggleTypeFields();
-
-      if (card.type === 'fidelite') {
-        document.getElementById('card-cagnotte').value = card.cagnotte || '';
-      } else {
-        document.getElementById('card-balance').value = card.balance || '';
-        document.getElementById('card-expiry').value = card.expiry || '';
-        document.getElementById('card-pin').value = card.pin || '';
-      }
-
-      updateGradientPreview();
-      document.getElementById('modal-title').textContent = 'Modifier la Carte';
-      document.getElementById('card-modal').classList.remove('hidden');
-    }
-
-    function deleteCurrentCard() {
-      if (!currentDetailCardId) return;
-      if (confirm('Voulez-vous vraiment supprimer cette carte ?')) {
-        cards = cards.filter(c => c.id !== currentDetailCardId);
-        saveCards();
-        closeDetailModal();
-        showToast('Carte supprimée');
-      }
-    }
-
-    /* ==========================================================================
-       7. TOUCH SWIPE GESTURES FOR DETAIL VIEW
-       ========================================================================== */
-    function setupTouchSwipe() {
-      const touchArea = document.getElementById('swipe-area');
-      let startX = 0;
-      let startY = 0;
-
-      touchArea.addEventListener('touchstart', (e) => {
-        startX = e.changedTouches[0].screenX;
-        startY = e.changedTouches[0].screenY;
-      }, { passive: true });
-
-      touchArea.addEventListener('touchend', (e) => {
-        const diffX = e.changedTouches[0].screenX - startX;
-        const diffY = e.changedTouches[0].screenY - startY;
-
-        // Ensure horizontal swipe is dominant
-        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-          if (diffX < 0) {
-            navigateDetailCard(1); // Swipe left -> Next
-          } else {
-            navigateDetailCard(-1); // Swipe right -> Prev
-          }
-        }
-      }, { passive: true });
-    }
-
-    /* ==========================================================================
-       8. CAMERA BARCODE SCANNER
-       ========================================================================== */
-    function openScannerModal() {
-      document.getElementById('scanner-modal').classList.remove('hidden');
-      html5QrCode = new Html5Qrcode("interactive-reader");
-      
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
-        (decodedText, decodedResult) => {
-          triggerHaptic();
-          document.getElementById('card-number').value = decodedText;
-          closeScannerModal();
-          showToast('Code scanné avec succès !');
-        },
-        (errorMessage) => {
-          // Scanning progress (silent)
-        }
-      ).catch(err => {
-        alert("Impossible d'accéder à la caméra : " + err);
-        closeScannerModal();
-      });
-    }
-
-    function closeScannerModal() {
-      if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-          html5QrCode.clear();
-          document.getElementById('scanner-modal').classList.add('hidden');
-        }).catch(() => {
-          document.getElementById('scanner-modal').classList.add('hidden');
-        });
-      } else {
-        document.getElementById('scanner-modal').classList.add('hidden');
-      }
-    }
-
-    /* ==========================================================================
-       9. SETTINGS, EXPORT & IMPORT
-       ========================================================================== */
-    function openSettingsModal() {
-      document.getElementById('settings-modal').classList.remove('hidden');
-    }
-
-    function closeSettingsModal() {
-      document.getElementById('settings-modal').classList.add('hidden');
-    }
-
-    function exportData() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cards, null, 2));
-      const dlAnchorElem = document.createElement('a');
-      dlAnchorElem.setAttribute("href", dataStr);
-      dlAnchorElem.setAttribute("download", `mes_cartes_backup_${new Date().toISOString().slice(0,10)}.json`);
-      document.body.appendChild(dlAnchorElem);
-      dlAnchorElem.click();
-      dlAnchorElem.remove();
-      showToast('Exportation réussie');
-    }
-
-    function importData(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const imported = JSON.parse(e.target.result);
-          if (Array.isArray(imported)) {
-            cards = imported;
-            saveCards();
-            closeSettingsModal();
-            showToast('Cartes importées avec succès !');
-          } else {
-            alert('Fichier de sauvegarde invalide.');
-          }
-        } catch (err) {
-          alert('Erreur lors de la lecture du fichier JSON.');
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    function clearAllData() {
-      if (confirm('ATTENTION : Toutes vos cartes seront définitivement supprimées. Continuer ?')) {
-        cards = [];
-        saveCards();
-        closeSettingsModal();
-        showToast('Toutes les cartes ont été effacées');
-      }
-    }
-
-    /* ==========================================================================
-       10. UTILITIES (WAKE LOCK, HAPTICS, TOASTS)
-       ========================================================================== */
-    function setTab(tab) {
-      currentFilter = tab;
-      document.querySelectorAll('nav button').forEach(b => {
-        b.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
-        b.classList.add('text-slate-400');
-      });
-
-      const activeBtn = document.getElementById(`tab-${tab}`);
-      if (activeBtn) {
-        activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-md');
-        activeBtn.classList.remove('text-slate-400');
-      }
-
-      renderCardsGrid();
-    }
-
-    function setActiveDock(dockId) {
-      document.querySelectorAll('.dock-btn').forEach(b => {
-        b.classList.remove('text-blue-400');
-        b.classList.add('text-slate-400');
-      });
-      document.getElementById(dockId)?.classList.add('text-blue-400');
-    }
-
-    function handleSearch() {
-      const val = document.getElementById('search-input').value;
-      searchQuery = val;
-      document.getElementById('clear-search-btn').classList.toggle('hidden', val.length === 0);
-      renderCardsGrid();
-    }
-
-    function clearSearch() {
-      document.getElementById('search-input').value = '';
-      searchQuery = '';
-      document.getElementById('clear-search-btn').classList.add('hidden');
-      renderCardsGrid();
-    }
-
-    async function requestWakeLock() {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-        }
-      } catch (err) {}
-    }
-
-    function releaseWakeLock() {
-      if (wakeLock !== null) {
-        wakeLock.release();
-        wakeLock = null;
-      }
-    }
-
-    function triggerHaptic() {
-      if (navigator.vibrate) {
-        navigator.vibrate(15);
-      }
-    }
-
-    function showToast(message) {
-      const container = document.getElementById('toast-container');
-      const toast = document.createElement('div');
-      toast.className = 'bg-slate-800/90 text-white border border-slate-700/80 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 pointer-events-auto transition-all transform translate-y-2 opacity-0';
-      toast.innerHTML = `<i class="ph-bold ph-check-circle text-emerald-400 text-base"></i> ${escapeHtml(message)}`;
-      
-      container.appendChild(toast);
-
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
-      });
-
-      setTimeout(() => {
-        toast.classList.add('opacity-0', '-translate-y-2');
-        setTimeout(() => toast.remove(), 300);
-      }, 2500);
-    }
-
-    function escapeHtml(str) {
-      return (str || '').replace(/[&<>"']/g, function(m) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
-      });
-    }
-  </script>
+  <div class="scan-wrap">
+    <video id="scanVideo" autoplay playsinline muted></video>
+    <div class="scan-frame"></div>
+  </div>
+  <p>Place le code dans le cadre.</p>
+</section>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
