@@ -10,7 +10,7 @@ const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
 const VIEW_KEY = 'loyalty_view_v1';
 const LOCK_KEY = 'loyalty_lock_v1';
-const APP_VERSION = '5.1';
+const APP_VERSION = '5.2';
 
 const CATEGORIES = [
   { id: 'courses', name: 'Courses', emoji: '🛒' },
@@ -363,7 +363,7 @@ function render() {
     b.style.setProperty('--card-color', color);
     b.style.setProperty('--card-color-dark', darken(color));
     b.style.setProperty('--card-fg', isLight(color) ? '#14181f' : '#fff');
-    if (firstPaint) { b.classList.add('enter'); b.style.animationDelay = `${Math.min(i, 10) * 35}ms`; }
+    if (firstPaint) { b.classList.add(viewMode === 'list' ? 'enter' : 'fan'); if (viewMode === 'list') b.style.animationDelay = `${Math.min(i, 10) * 35}ms`; }
     const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(c));
     const typeText = spent ? 'Épuisée' : (cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType));
     b.append(
@@ -373,7 +373,25 @@ function render() {
     b.addEventListener('click', () => { if (!reorderMode) openDetail(c.id); });
     grid.append(b);
   });
+  if (firstPaint && viewMode === 'grid') fanIn(grid);
   firstPaint = false;
+}
+
+/* ---------- Ouverture : les cartes se déploient en éventail (une seule fois par lancement) ---------- */
+function fanIn(grid) {
+  const nodes = [...grid.querySelectorAll('.loyalty-card.fan')];
+  const g = grid.getBoundingClientRect();
+  const ax = g.left + g.width / 2, ay = g.top + 40;
+  const shown = nodes.filter(n => n.getBoundingClientRect().top < innerHeight).slice(0, 10);
+  nodes.forEach(n => n.classList.remove('fan'));
+  shown.forEach((n, i) => {
+    const r = n.getBoundingClientRect();
+    n.style.setProperty('--fx', `${Math.round(ax - (r.left + r.width / 2))}px`);
+    n.style.setProperty('--fy', `${Math.round(ay - (r.top + r.height / 2))}px`);
+    n.style.setProperty('--fr', `${((i - (shown.length - 1) / 2) * 5).toFixed(1)}deg`);
+    n.style.animationDelay = `${60 + i * 55}ms`;
+    n.classList.add('fan');
+  });
 }
 
 /* ---------- Réorganisation par glisser-déposer ---------- */

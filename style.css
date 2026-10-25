@@ -96,6 +96,7 @@ main{max-width:760px;margin:0 auto;padding:0 16px}
 .loyalty-card::after{content:"";position:absolute;right:-36px;bottom:-52px;z-index:-1;width:130px;height:130px;border-radius:50%;background:#ffffff14;pointer-events:none}
 .loyalty-card:active{transform:scale(.97)}
 .loyalty-card.enter{animation:cardIn .4s var(--ease) backwards}
+.loyalty-card.fan{animation:cardFan .75s cubic-bezier(.22,1,.36,1) backwards}
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .card-logo{display:grid;place-items:center;width:38px;height:38px;flex:none;overflow:hidden;border-radius:11px;background:#fff;color:var(--card-color-dark);font-size:.95rem;font-weight:900;box-shadow:0 2px 6px -2px #0004}
 .card-logo img{width:100%;height:100%;object-fit:contain}
@@ -306,6 +307,7 @@ textarea.form-input{min-height:80px;padding:13px 14px;resize:vertical}
 @keyframes sheetUp{from{opacity:.6;transform:translateY(40px)}to{opacity:1;transform:none}}
 @keyframes detailIn{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes cardIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes cardFan{0%{opacity:0;transform:translate(var(--fx),var(--fy)) rotate(var(--fr)) scale(.9)}25%{opacity:1}100%{opacity:1;transform:none}}
 @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes scanLine{from{top:8%}to{top:88%}}
 
