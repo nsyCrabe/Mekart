@@ -21,14 +21,14 @@
     <p class="subtitle" id="cardCount">0 carte</p>
   </div>
   <div class="top-actions">
-    <button class="round-button" id="themeButton" aria-label="Choisir le thème">🎨</button>
-    <button class="round-button" id="menuButton" aria-label="Sauvegarde et réglages">⚙️</button>
+    <button class="round-button" id="themeButton" data-icon="palette" aria-label="Choisir le thème"></button>
+    <button class="round-button" id="menuButton" data-icon="sliders" aria-label="Sauvegarde et réglages"></button>
   </div>
 </header>
 
 <main>
   <label class="search-box" for="searchInput">
-    <span aria-hidden="true">⌕</span>
+    <span data-icon="search" aria-hidden="true"></span>
     <input id="searchInput" type="search" placeholder="Rechercher une carte" autocomplete="off">
   </label>
 
@@ -47,7 +47,10 @@
         <option value="az">A → Z</option>
         <option value="manual">Mon ordre</option>
       </select>
-      <button class="chip" id="reorderButton" type="button">↕ Réorganiser</button>
+      <div class="sort-actions">
+        <button class="chip" id="reorderButton" type="button" data-icon="reorder">Réorganiser</button>
+        <button class="chip icon-chip" id="viewButton" type="button" aria-label="Passer en affichage liste"></button>
+      </div>
     </div>
   </div>
   <div class="reorder-bar" id="reorderBar" hidden>
@@ -56,25 +59,32 @@
   </div>
 
   <section class="quick-guide" id="quickGuide">
-    <span aria-hidden="true">✨</span>
+    <span class="guide-ic" data-icon="bulb" aria-hidden="true"></span>
     <div>
       <strong>Ajoute une carte en quelques secondes</strong>
       <small>Scanne le code avec l'appareil photo, ou tape le numéro.</small>
     </div>
-    <button id="hideGuide" aria-label="Masquer l'aide">×</button>
+    <button id="hideGuide" type="button" data-icon="x" aria-label="Masquer l'aide"></button>
   </section>
 
   <section id="cardsGrid" class="cards-grid" aria-label="Mes cartes"></section>
 
   <section id="emptyState" class="empty-state" hidden>
-    <div class="empty-icon" aria-hidden="true">💳</div>
+    <svg class="empty-art" viewBox="0 0 160 124" aria-hidden="true">
+      <rect class="a" x="36" y="10" width="92" height="58" rx="11" transform="rotate(-9 82 39)"/>
+      <rect class="b" x="30" y="28" width="100" height="62" rx="12" transform="rotate(5 80 59)"/>
+      <rect class="c" x="24" y="46" width="112" height="68" rx="13"/>
+      <rect class="e" x="38" y="62" width="26" height="19" rx="5"/>
+      <rect class="d" x="38" y="92" width="52" height="7" rx="3.5"/>
+      <rect class="d" x="98" y="92" width="24" height="7" rx="3.5"/>
+    </svg>
     <h2 id="emptyTitle">Aucune carte</h2>
     <p id="emptyText">Ajoute ta première carte de fidélité pour la retrouver en caisse, même sans réseau.</p>
     <button class="primary-button" id="emptyAddButton" type="button">Ajouter une carte</button>
   </section>
 </main>
 
-<button class="add-button" id="addButton" type="button">+ Ajouter une carte</button>
+<button class="add-button" id="addButton" type="button" data-icon="plus"><span id="addLabel">Ajouter une carte</span></button>
 
 <!-- Formulaire -->
 <div class="backdrop" id="formBackdrop" hidden></div>
@@ -82,7 +92,7 @@
   <div class="handle"></div>
   <div class="sheet-title">
     <h2 id="formTitle">Nouvelle carte</h2>
-    <button class="close-button" id="closeForm" type="button" aria-label="Fermer">×</button>
+    <button class="close-button" id="closeForm" type="button" data-icon="x" aria-label="Fermer"></button>
   </div>
   <form id="cardForm" autocomplete="off">
     <div class="segmented" id="kindSwitch" role="radiogroup" aria-label="Type de carte">
@@ -91,7 +101,7 @@
     </div>
 
     <div class="logo-upload">
-      <button type="button" class="logo-preview" id="logoPreview" aria-label="Choisir un logo">🏪</button>
+      <button type="button" class="logo-preview" id="logoPreview" aria-label="Choisir un logo"></button>
       <div>
         <strong>Logo du magasin</strong>
         <p>Une image depuis ta galerie.</p>
@@ -115,10 +125,10 @@
         <label class="form-label" for="cagnotteCodeInput">Code cagnotte (facultatif)</label>
         <div class="code-row">
           <input class="form-input masked" id="cagnotteCodeInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Saisis le code">
-          <button class="scan-button" id="cagnotteCodeEye" type="button" aria-label="Afficher ou masquer la saisie">👁</button>
+          <button class="scan-button" id="cagnotteCodeEye" type="button" data-icon="eye" aria-label="Afficher ou masquer la saisie"></button>
         </div>
         <button class="text-button danger" id="removeCagnotteCode" type="button" hidden>Retirer le code enregistré</button>
-        <p class="field-hint">Visible sur la fiche de la carte avec le bouton 👁.</p>
+        <p class="field-hint">Visible sur la fiche de la carte avec le bouton œil.</p>
       </div>
     </div>
 
@@ -133,8 +143,8 @@
       <label class="form-label" for="codeInput">Numéro de carte</label>
       <div class="code-row">
         <input class="form-input" id="codeInput" inputmode="text" placeholder="Saisis le numéro">
-        <button class="scan-button" id="scanButton" type="button" aria-label="Scanner avec l'appareil photo">📷</button>
-        <button class="scan-button" id="imageButton" type="button" aria-label="Lire le code depuis une image">🖼️</button>
+        <button class="scan-button" id="scanButton" type="button" data-icon="scan" aria-label="Scanner avec l'appareil photo"></button>
+        <button class="scan-button" id="imageButton" type="button" data-icon="image" aria-label="Lire le code depuis une image"></button>
         <input id="imageInput" type="file" accept="image/*" hidden>
       </div>
     </div>
@@ -158,7 +168,7 @@
   <div class="handle"></div>
   <div class="sheet-title">
     <h2>Choisir un thème</h2>
-    <button class="close-button" id="closeTheme" type="button" aria-label="Fermer">×</button>
+    <button class="close-button" id="closeTheme" type="button" data-icon="x" aria-label="Fermer"></button>
   </div>
   <div class="theme-list" id="themeList"></div>
 </section>
@@ -169,27 +179,27 @@
   <div class="handle"></div>
   <div class="sheet-title">
     <h2>Sauvegarde et réglages</h2>
-    <button class="close-button" id="closeMenu" type="button" aria-label="Fermer">×</button>
+    <button class="close-button" id="closeMenu" type="button" data-icon="x" aria-label="Fermer"></button>
   </div>
   <div class="menu-list">
     <button class="menu-item" id="exportButton" type="button">
-      <span class="menu-icon" aria-hidden="true">📤</span>
+      <span class="menu-icon" data-icon="upload" aria-hidden="true"></span>
       <span><strong>Exporter mes cartes</strong><small>Télécharge un fichier de sauvegarde</small></span>
     </button>
     <button class="menu-item" id="importButton" type="button">
-      <span class="menu-icon" aria-hidden="true">📥</span>
+      <span class="menu-icon" data-icon="download" aria-hidden="true"></span>
       <span><strong>Importer une sauvegarde</strong><small>Ajoute les cartes d'un fichier exporté</small></span>
     </button>
     <button class="menu-item" id="installButton" type="button" hidden>
-      <span class="menu-icon" aria-hidden="true">📲</span>
+      <span class="menu-icon" data-icon="phone" aria-hidden="true"></span>
       <span><strong>Installer l'application</strong><small>Ajoute-la à ton écran d'accueil</small></span>
     </button>
     <button class="menu-item" id="forceUpdateButton" type="button">
-      <span class="menu-icon" aria-hidden="true">🔄</span>
+      <span class="menu-icon" data-icon="refresh" aria-hidden="true"></span>
       <span><strong>Forcer la mise à jour</strong><small>Recharge la dernière version, sans toucher à tes cartes</small></span>
     </button>
     <button class="menu-item" id="showGuideButton" type="button">
-      <span class="menu-icon" aria-hidden="true">💡</span>
+      <span class="menu-icon" data-icon="bulb" aria-hidden="true"></span>
       <span><strong>Réafficher l'aide</strong><small>Le bandeau de démarrage</small></span>
     </button>
   </div>
@@ -201,68 +211,77 @@
 <!-- Fiche carte -->
 <div class="backdrop" id="detailBackdrop" hidden></div>
 <section class="detail-panel" id="detailPanel" hidden aria-label="Détail de la carte">
-  <div class="detail-toolbar">
-    <button class="close-button" id="closeDetail" type="button" aria-label="Fermer">×</button>
-    <div class="detail-actions">
-      <button class="tool-button" id="favCard" type="button" aria-label="Favori">☆</button>
-      <button class="tool-button" id="editCard" type="button" aria-label="Modifier">✏️</button>
-      <button class="tool-button" id="deleteCard" type="button" aria-label="Supprimer">🗑️</button>
-    </div>
-  </div>
-  <div class="detail-logo" id="detailLogo"></div>
-  <h2 id="detailName"></h2>
-  <p class="detail-type" id="detailType"></p>
-  <div class="detail-meta" id="detailMeta" hidden></div>
-
-  <div class="cagnotte-box" id="cagnotteBox" hidden>
-    <div class="cagnotte-view" id="cagnotteView">
-      <div><small>Cagnotte</small><strong id="cagnotteValue">0,00 €</strong></div>
-      <button class="tool-button" id="cagnotteEdit" type="button" aria-label="Modifier la cagnotte">✏️</button>
-    </div>
-    <div class="cagnotte-code" id="cagnotteCodeRow" hidden>
-      <div class="code-info"><span class="code-label">Code cagnotte</span><strong id="cagnotteCodeText">••••••</strong></div>
-      <button class="tool-button" id="cagnotteCodeShow" type="button" aria-label="Afficher le code">👁</button>
-    </div>
-    <div class="cagnotte-editor" id="cagnotteEditor" hidden>
-      <input class="form-input" id="cagnotteInput" inputmode="decimal" placeholder="Nouveau montant (€)" aria-label="Nouveau montant de la cagnotte">
-      <button class="tool-button ok" id="cagnotteSave" type="button" aria-label="Valider">✓</button>
-      <button class="tool-button" id="cagnotteCancel" type="button" aria-label="Annuler">✕</button>
-    </div>
-  </div>
-
-  <div class="balance-box" id="balanceBox" hidden>
-    <div class="balance-top">
-      <div><small id="balanceCaption">Solde restant</small><strong id="balanceValue">0,00 €</strong></div>
-      <button class="text-button" id="toggleHistory" type="button">Historique</button>
-    </div>
-    <div class="balance-form">
-      <input class="form-input" id="amountInput" inputmode="decimal" placeholder="Montant (€)" aria-label="Montant">
-      <input class="form-input" id="amountNote" maxlength="40" placeholder="Note (facultatif)" aria-label="Note">
-      <div class="balance-actions">
-        <button class="secondary-button spend" id="spendButton" type="button">− Dépense</button>
-        <button class="secondary-button" id="topupButton" type="button">+ Recharge</button>
+  <div class="pass-head">
+    <div class="detail-toolbar">
+      <button class="close-button" id="closeDetail" type="button" data-icon="x" aria-label="Fermer"></button>
+      <div class="detail-actions">
+        <button class="tool-button" id="favCard" type="button" data-icon="star" aria-label="Favori"></button>
+        <button class="tool-button" id="editCard" type="button" data-icon="edit" aria-label="Modifier"></button>
+        <button class="tool-button" id="deleteCard" type="button" data-icon="trash" aria-label="Supprimer"></button>
       </div>
     </div>
-    <ul class="history-list" id="historyList" hidden></ul>
-    <button class="text-button" id="undoLast" type="button" hidden>Annuler la dernière opération</button>
+    <div class="detail-id">
+      <div class="detail-logo" id="detailLogo"></div>
+      <div>
+        <h2 id="detailName"></h2>
+        <p class="detail-type" id="detailType"></p>
+      </div>
+    </div>
   </div>
 
-  <div class="code-box" id="codeBox" role="button" tabindex="0" aria-label="Agrandir le code" hidden>
-    <svg id="barcodeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
-    <div id="qrHolder"></div>
-    <p class="detail-code" id="detailCode"></p>
-    <p class="code-hint" id="codeHint">Touche pour agrandir</p>
+  <div class="pass-body">
+    <div class="detail-meta" id="detailMeta" hidden></div>
+
+    <div class="cagnotte-box" id="cagnotteBox" hidden>
+      <div class="cagnotte-view" id="cagnotteView">
+        <div><small>Cagnotte</small><strong id="cagnotteValue">0,00 €</strong></div>
+        <button class="tool-button" id="cagnotteEdit" type="button" data-icon="edit" aria-label="Modifier la cagnotte"></button>
+      </div>
+      <div class="cagnotte-code" id="cagnotteCodeRow" hidden>
+        <div class="code-info"><span class="code-label">Code cagnotte</span><strong id="cagnotteCodeText">••••••</strong></div>
+        <button class="tool-button" id="cagnotteCodeShow" type="button" data-icon="eye" aria-label="Afficher le code"></button>
+      </div>
+      <div class="cagnotte-editor" id="cagnotteEditor" hidden>
+        <input class="form-input" id="cagnotteInput" inputmode="decimal" placeholder="Nouveau montant (€)" aria-label="Nouveau montant de la cagnotte">
+        <button class="tool-button ok" id="cagnotteSave" type="button" data-icon="check" aria-label="Valider"></button>
+        <button class="tool-button" id="cagnotteCancel" type="button" data-icon="x" aria-label="Annuler"></button>
+      </div>
+    </div>
+
+    <div class="balance-box" id="balanceBox" hidden>
+      <div class="balance-top">
+        <div><small id="balanceCaption">Solde restant</small><strong id="balanceValue">0,00 €</strong></div>
+        <button class="text-button" id="toggleHistory" type="button">Historique</button>
+      </div>
+      <div class="balance-form">
+        <input class="form-input" id="amountInput" inputmode="decimal" placeholder="Montant (€)" aria-label="Montant">
+        <input class="form-input" id="amountNote" maxlength="40" placeholder="Note (facultatif)" aria-label="Note">
+        <div class="balance-actions">
+          <button class="secondary-button spend" id="spendButton" type="button">− Dépense</button>
+          <button class="secondary-button" id="topupButton" type="button">+ Recharge</button>
+        </div>
+      </div>
+      <ul class="history-list" id="historyList" hidden></ul>
+      <button class="text-button" id="undoLast" type="button" hidden>Annuler la dernière opération</button>
+    </div>
+
+    <div class="code-box" id="codeBox" role="button" tabindex="0" aria-label="Agrandir le code" hidden>
+      <svg id="barcodeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="qrHolder"></div>
+      <p class="detail-code" id="detailCode"></p>
+      <p class="code-hint" id="codeHint">Touche pour agrandir</p>
+    </div>
+    <div class="copy-row"><button class="text-button" id="copyCode" type="button" hidden>Copier le numéro</button></div>
+    <p class="detail-notes" id="detailNotes" hidden></p>
+    <button class="primary-button wide" id="closeDetailButton" type="button">Terminer</button>
   </div>
-  <div class="copy-row"><button class="text-button" id="copyCode" type="button" hidden>Copier le numéro</button></div>
-  <p class="detail-notes" id="detailNotes" hidden></p>
-  <button class="primary-button wide" id="closeDetailButton" type="button">Terminer</button>
 </section>
 
 <!-- Scanner -->
 <section class="scanner" id="scanner" hidden aria-label="Scanner">
   <div class="scanner-head">
     <strong>Scanner le code</strong>
-    <button id="closeScanner" type="button">Fermer ×</button>
+    <button id="closeScanner" type="button">Fermer</button>
   </div>
   <div class="scan-wrap">
     <video id="scanVideo" autoplay playsinline muted></video>

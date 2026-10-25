@@ -8,7 +8,8 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
-const APP_VERSION = '4.7';
+const VIEW_KEY = 'loyalty_view_v1';
+const APP_VERSION = '5.0';
 
 const CATEGORIES = [
   { id: 'courses', name: 'Courses', emoji: '🛒' },
@@ -44,6 +45,37 @@ const DARK_IDS = THEMES.filter(t => t.category === 'dark').map(t => t.id);
 
 const $ = id => document.getElementById(id);
 
+/* ---------- Icônes (SVG simples, héritent de la couleur du texte) ---------- */
+const ICONS = {
+  palette: '<circle cx="13.5" cy="6.5" r=".8"/><circle cx="17.5" cy="10.5" r=".8"/><circle cx="8.5" cy="7.5" r=".8"/><circle cx="6.5" cy="12.5" r=".8"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.700 6-6 0-4.900-4.500-8.800-10-8.800z"/>',
+  sliders: '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3"/><path d="M14 2v4M8 10v4M16 18v4"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  check: '<path d="m5 12.500 4.500 4.500L19 7.500"/>',
+  star: '<path d="m12 2.800 2.800 5.700 6.300.9-4.600 4.400 1.100 6.300L12 17.200l-5.600 2.900 1.100-6.300L2.900 9.400l6.300-.9z"/>',
+  'star-fill': '<path fill="currentColor" d="m12 2.800 2.800 5.700 6.300.9-4.600 4.400 1.100 6.300L12 17.200l-5.600 2.900 1.100-6.300L2.900 9.400l6.300-.9z"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.500 3.500a2.100 2.100 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>',
+  scan: '<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.100-3.100a2 2 0 0 0-2.800 0L6 21"/>',
+  eye: '<path d="M2 12s3.600-7 10-7 10 7 10 7-3.600 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  'eye-off': '<path d="M9.900 4.200A10 10 0 0 1 12 4c6.400 0 10 8 10 8a17 17 0 0 1-3.200 4.200M6.600 6.600A17 17 0 0 0 2 12s3.600 7 10 7a9.700 9.700 0 0 0 5.400-1.600"/><path d="M14.100 14.100a3 3 0 1 1-4.200-4.200"/><path d="m2 2 20 20"/>',
+  unlock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.500-2"/>',
+  reorder: '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.500"/><rect x="14" y="3" width="7" height="7" rx="1.500"/><rect x="3" y="14" width="7" height="7" rx="1.500"/><rect x="14" y="14" width="7" height="7" rx="1.500"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.500" cy="6" r=".8"/><circle cx="3.500" cy="12" r=".8"/><circle cx="3.500" cy="18" r=".8"/>',
+  upload: '<path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
+  download: '<path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
+  phone: '<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 18h.01"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-3-6.700L21 8"/><path d="M21 3v5h-5"/>',
+  bulb: '<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.700c.6.500 1 1.300 1 2.300h6c0-1 .4-1.800 1-2.300A7 7 0 0 0 12 2z"/>',
+  store: '<path d="m3 9 1.500-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/>'
+};
+const ic = name => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+const setIcon = (node, name) => { node.innerHTML = ic(name); };
+function iconEl(name, cls) { const s = document.createElement('span'); if (cls) s.className = cls; s.innerHTML = ic(name); return s; }
+
 /* ---------- État ---------- */
 let cards = [];
 let editingId = null;
@@ -56,6 +88,8 @@ let tab = 'loyalty';        // onglet affiché : loyalty | gift
 let formKind = 'loyalty';   // type de carte dans le formulaire
 let removeCode = false;     // « Retirer le code enregistré » demandé dans le formulaire
 let sortMode = 'recent';
+let viewMode = 'grid';      // grid | list
+let firstPaint = true;      // l'animation d'entrée des cartes ne joue qu'au démarrage
 let themePref = 'auto';
 let stream = null;
 let scanTimer = null;
@@ -142,6 +176,7 @@ function load() {
   themePref = localStorage.getItem(THEME_KEY) || 'auto';
   sortMode = localStorage.getItem(SORT_KEY) || 'recent';
   if (!['recent', 'used', 'az', 'manual'].includes(sortMode)) sortMode = 'recent';
+  viewMode = localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid';
   ensureOrder();
   $('sortSelect').value = sortMode;
   $('quickGuide').hidden = localStorage.getItem(GUIDE_KEY) === '1';
@@ -184,7 +219,7 @@ function renderThemes() {
     swatch: 'linear-gradient(135deg,#f4f7fb 50%,#0e1525 50%)'
   });
   const root = $('themeList');
-  root.replaceChildren(autoBtn, section('light', '☀️ Clair', 'Des couleurs lumineuses'), section('dark', '🌙 Sombre', 'Confortable dans le noir'));
+  root.replaceChildren(autoBtn, section('light', 'Clair', 'Des couleurs lumineuses'), section('dark', 'Sombre', 'Confortable dans le noir'));
 }
 function themeButton(t) {
   const active = t.id === themePref;
@@ -271,7 +306,7 @@ function render() {
     $('tab' + k).setAttribute('aria-selected', on ? 'true' : 'false');
   });
   $('cardCount').textContent = `${cards.length} carte${cards.length > 1 ? 's' : ''}`;
-  $('addButton').textContent = tab === 'gift' ? '+ Ajouter une carte cadeau' : '+ Ajouter une carte';
+  $('addLabel').textContent = tab === 'gift' ? 'Ajouter une carte cadeau' : 'Ajouter une carte';
 
   const pool = tabCards();
   const none = pool.length === 0;
@@ -308,6 +343,9 @@ function render() {
   $('reorderBar').hidden = !reorderMode;
   $('reorderButton').classList.toggle('active', reorderMode);
   grid.classList.toggle('reordering', reorderMode);
+  grid.classList.toggle('list', viewMode === 'list');
+  setIcon($('viewButton'), viewMode === 'list' ? 'grid' : 'list');
+  $('viewButton').setAttribute('aria-label', viewMode === 'list' ? 'Passer en affichage grille' : 'Passer en affichage liste');
 
   const list = sortedFiltered();
   if (!list.length) {
@@ -323,16 +361,17 @@ function render() {
     b.style.setProperty('--card-color', color);
     b.style.setProperty('--card-color-dark', darken(color));
     b.style.setProperty('--card-fg', isLight(color) ? '#14181f' : '#fff');
-    b.style.animationDelay = `${Math.min(i, 10) * 35}ms`;
+    if (firstPaint) { b.classList.add('enter'); b.style.animationDelay = `${Math.min(i, 10) * 35}ms`; }
     const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(c));
     const typeText = spent ? 'Épuisée' : (cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType));
     b.append(
-      el('div', { class: 'card-top' }, logo, (c.fav || c.balance != null) ? el('div', { class: 'card-badges' }, c.balance != null ? el('span', { class: 'card-balance', text: (kindOf(c) === 'loyalty' ? '💰 ' : '') + fmtMoney(c.balance) }) : null, c.fav ? el('span', { class: 'card-fav', text: '★' }) : null) : null),
-      el('div', {}, el('p', { class: 'card-name', text: c.name }), el('p', { class: 'card-type', text: typeText }))
+      el('div', { class: 'card-top' }, logo, (c.fav || c.balance != null) ? el('div', { class: 'card-badges' }, c.balance != null ? el('span', { class: 'card-balance', text: (kindOf(c) === 'loyalty' ? '💰 ' : '') + fmtMoney(c.balance) }) : null, c.fav ? iconEl('star-fill', 'card-fav') : null) : null),
+      el('div', { class: 'card-text' }, el('p', { class: 'card-name', text: c.name }), el('p', { class: 'card-type', text: typeText }))
     );
     b.addEventListener('click', () => { if (!reorderMode) openDetail(c.id); });
     grid.append(b);
   });
+  firstPaint = false;
 }
 
 /* ---------- Réorganisation par glisser-déposer ---------- */
@@ -523,7 +562,7 @@ function updateLogoPreview() {
   const p = $('logoPreview');
   p.replaceChildren();
   if (selectedLogo) { p.append(el('img', { src: selectedLogo, alt: 'Logo sélectionné' })); $('removeLogo').hidden = false; }
-  else { p.append(el('span', { text: '🏪' })); $('removeLogo').hidden = true; }
+  else { p.append(iconEl('store')); $('removeLogo').hidden = true; }
 }
 function resizeLogo(file) {
   return new Promise((resolve, reject) => {
@@ -608,6 +647,11 @@ function openDetail(id) {
   c.lastUsed = Date.now();
   save();
 
+  const panel = $('detailPanel'), tone = c.color || COLORS[0];
+  panel.style.setProperty('--card-color', tone);
+  panel.style.setProperty('--card-color-dark', darken(tone));
+  panel.style.setProperty('--card-fg', isLight(tone) ? '#14181f' : '#fff');
+  panel.classList.remove('code-big');
   $('detailName').textContent = c.name;
   $('detailType').textContent = typeLabel(c.codeType);
   $('detailLogo').replaceChildren(logoNode(c));
@@ -726,16 +770,18 @@ function cleanupDetail() {
   openedId = null;
   maskCode();
   $('codeBox').classList.remove('big');
+  $('detailPanel').classList.remove('code-big');
   releaseAwake();
   render(); // met à jour l'ordre (récentes / utilisées)
 }
 function syncFavButton(c) {
-  $('favCard').textContent = c.fav ? '★' : '☆';
+  setIcon($('favCard'), c.fav ? 'star-fill' : 'star');
   $('favCard').setAttribute('aria-pressed', c.fav ? 'true' : 'false');
 }
 function toggleBig() {
   const box = $('codeBox');
   const big = box.classList.toggle('big');
+  $('detailPanel').classList.toggle('code-big', big);
   $('codeHint').textContent = big ? 'Touche pour réduire' : 'Touche pour agrandir';
   box.setAttribute('aria-label', big ? 'Réduire le code' : 'Agrandir le code');
 }
@@ -860,7 +906,7 @@ function setupServiceWorker() {
 /* ---------- Code cagnotte : afficher / masquer ---------- */
 function maskCode() {
   $('cagnotteCodeText').textContent = '••••••';
-  $('cagnotteCodeShow').textContent = '👁';
+  setIcon($('cagnotteCodeShow'), 'eye');
   $('cagnotteCodeShow').setAttribute('aria-label', 'Afficher le code');
   $('cagnotteCodeShow').dataset.shown = '';
 }
@@ -870,7 +916,7 @@ function refreshCodeRow(c) {
   $('cagnotteCodeRow').hidden = !c.cagnotteCode;
   if (isLegacyCode(c)) {
     $('cagnotteCodeText').textContent = 'Ancien code protégé';
-    $('cagnotteCodeShow').textContent = '🔓';
+    setIcon($('cagnotteCodeShow'), 'unlock');
     $('cagnotteCodeShow').setAttribute('aria-label', 'Convertir les anciens codes');
   }
 }
@@ -881,7 +927,7 @@ function toggleCode() {
   const btn = $('cagnotteCodeShow');
   if (btn.dataset.shown === '1') return maskCode();
   $('cagnotteCodeText').textContent = c.cagnotteCode;
-  btn.textContent = '🙈';
+  setIcon(btn, 'eye-off');
   btn.setAttribute('aria-label', 'Masquer le code');
   btn.dataset.shown = '1';
 }
@@ -988,6 +1034,11 @@ $('sortSelect').addEventListener('change', e => {
   render();
 });
 $('reorderButton').addEventListener('click', () => setReorder(!reorderMode));
+$('viewButton').addEventListener('click', () => {
+  viewMode = viewMode === 'list' ? 'grid' : 'list';
+  localStorage.setItem(VIEW_KEY, viewMode);
+  render();
+});
 $('reorderDone').addEventListener('click', () => setReorder(false));
 $('cardsGrid').addEventListener('pointerdown', onGridPointerDown);
 $('cardsGrid').addEventListener('contextmenu', e => { if (reorderMode) e.preventDefault(); });
@@ -1113,6 +1164,7 @@ $('categoryInput').replaceChildren(
   el('option', { value: '', text: 'Aucune catégorie' }),
   ...CATEGORIES.map(c => el('option', { value: c.id, text: `${c.emoji} ${c.name}` }))
 );
+document.querySelectorAll('[data-icon]').forEach(n => n.insertAdjacentHTML('afterbegin', ic(n.dataset.icon)));
 $('versionNote').textContent = `Version ${APP_VERSION}`;
 load();
 if (!cards.some(isLegacyCode)) localStorage.removeItem(VAULT_KEY);

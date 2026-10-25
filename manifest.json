@@ -10,9 +10,40 @@
   "display": "standalone",
   "background_color": "#f4f7fb",
   "theme_color": "#f4f7fb",
-  "categories": ["shopping", "lifestyle", "utilities"],
+  "categories": [
+    "shopping",
+    "lifestyle",
+    "utilities"
+  ],
   "icons": [
-    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ajouter une carte",
+      "short_name": "Ajouter",
+      "url": "./index.html?action=add"
+    },
+    {
+      "name": "Mes favorites",
+      "short_name": "Favorites",
+      "url": "./index.html?action=favorites"
+    },
+    {
+      "name": "Dernière carte utilisée",
+      "short_name": "Dernière",
+      "url": "./index.html?action=last"
+    }
   ]
 }
