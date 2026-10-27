@@ -34,6 +34,18 @@ const server = http.createServer((req, res) => {
     assert.ok(JSON.parse(actual).some(c => c.id === 'test-preserved'), 'existing cards must survive startup');
     assert.equal(await page.locator('#encryptedExportButton').count(), 1);
     assert.equal(await page.evaluate(() => typeof window.CardsCrypto?.encrypt), 'function');
+    // Round-trip réel dans Chromium, sans modifier le stockage utilisateur.
+    const passphrase = 'Phrase-test-unique-2026!';
+    const encrypted = await page.evaluate(async ({ raw, passphrase }) =>
+      window.CardsCrypto.encrypt(raw, passphrase), { raw: actual, passphrase });
+    const restored = await page.evaluate(async ({ encrypted, passphrase }) =>
+      window.CardsCrypto.decrypt(encrypted, passphrase), { encrypted, passphrase });
+    assert.equal(restored, actual, 'encrypted backup must decrypt to identical card data');
+    await assert.rejects(page.evaluate(async ({ encrypted }) =>
+      window.CardsCrypto.decrypt(encrypted, 'Wrong-password-2026!'), { encrypted }),
+      'wrong password must reject');
+    assert.equal(await page.evaluate(() => localStorage.getItem('loyalty_cards_v1')), actual,
+      'encryption must not mutate existing cards');
     assert.deepEqual(errors, [], 'no uncaught application errors');
     console.log('Browser smoke passed: existing card preserved, encrypted backup available, no page errors');
   } finally {
