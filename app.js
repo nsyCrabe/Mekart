@@ -51,7 +51,7 @@ const DEFAULT_THEME = { mode: 'auto', accent: '#3b6ef0', accent2: null, bg: null
 const ACCENTS = ['#3b6ef0', '#7c4dff', '#e0407f', '#ee5a3c', '#f59e0b', '#1f9254', '#0a8fa8', '#64748b'];
 let theme = { ...DEFAULT_THEME };
 let wallpaper = null;
-let themeTab = 'colors';
+let themeTab = 'app';
 let themeTarget = 'accent';
 let themeAdv = false;
 let themeSnap = null;
@@ -586,6 +586,16 @@ function colorsPanel() {
     el('strong', { text: 'Barre de navigation Android' }),
     el('p', { text: 'Le fond derrière le trait de navigation dépend aussi de la couleur enregistrée lors de l’installation de la PWA. Il peut rester sombre même si tu changes le thème ici. Une réinstallation peut être nécessaire pour changer cette couleur système : sauvegarde tes cartes avant toute réinstallation.' })));
   sync();
+  // Conserver les contrôles existants, mais n'afficher que la rubrique choisie.
+  // Les sections sont délimitées par leurs titres, sans toucher aux données.
+  let sectionGroup = 'app';
+  for (const node of [...box.children]) {
+    if (node === cardTitle) sectionGroup = 'cards';
+    else if (node === section) sectionGroup = 'colors';
+    const show = sectionGroup === themeTab;
+    node.hidden = !show;
+    if (!show) node.style.display = 'none';
+  }
   return box;
 }
 function wallpaperPanel() {
@@ -607,12 +617,12 @@ function wallpaperPanel() {
 function renderThemes() {
   const tabs = $('themeTabs');
   tabs.replaceChildren();
-  [['colors', 'Couleurs'], ['wallpaper', "Fond d'écran"]].forEach(([id, label]) => {
+  [['app', "Thème de l'app"], ['cards', 'Thème des cartes'], ['colors', 'Couleurs'], ['wallpaper', "Fond d'écran"]].forEach(([id, label]) => {
     const b = el('button', { type: 'button', role: 'tab', class: `seg${themeTab === id ? ' active' : ''}`, text: label });
     b.addEventListener('click', () => { themeTab = id; renderThemes(); });
     tabs.append(b);
   });
-  $('themeList').replaceChildren(themeTab === 'colors' ? colorsPanel() : wallpaperPanel());
+  $('themeList').replaceChildren(themeTab === 'wallpaper' ? wallpaperPanel() : colorsPanel());
 }
 function resizeWallpaper(file) {
   return new Promise((resolve, reject) => {
@@ -1800,7 +1810,7 @@ $('wpInput').addEventListener('change', async e => {
 });
 $('themeButton').addEventListener('click', () => {
   themeSnap = { theme: { ...theme }, wallpaper, cardStyle };
-  themeTab = 'colors'; themeTarget = 'accent'; themeAdv = false;
+  themeTab = 'app'; themeTarget = 'accent'; themeAdv = false;
   renderThemes();
   openLayer('theme');
 });
@@ -1827,7 +1837,7 @@ $('menuAppearanceButton').addEventListener('click', () => {
   stack.pop();
   hideLayer('menu');
   themeSnap = { theme: { ...theme }, wallpaper, cardStyle };
-  themeTab = 'colors';
+  themeTab = 'app';
   themeTarget = 'accent';
   themeAdv = false;
   renderThemes();
