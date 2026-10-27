@@ -491,3 +491,15 @@ main{max-width:792px;padding:0 20px}
 input,select,textarea{max-width:100%}
 @media(max-width:400px){.bottom-nav{padding-left:10px;padding-right:10px}.menu-item{gap:10px}}
 @media(hover:none){.menu-item:hover{background:var(--surface);border-color:var(--line)}}
+
+/* Correctif : cartes compactes en grille, sans débordement horizontal */
+.cards-grid:not(.list){grid-template-columns:repeat(2,minmax(0,1fr));width:100%;min-width:0}
+.cards-grid:not(.list) .loyalty-card{width:100%;min-width:0;max-width:100%;min-height:0;aspect-ratio:1.586;padding:12px;border-radius:18px}
+.cards-grid:not(.list) .card-logo{width:clamp(32px,10vw,46px);height:clamp(32px,10vw,46px);border-radius:12px}
+.cards-grid:not(.list) .card-name{font-size:clamp(.8rem,3.4vw,1rem)}
+.cards-grid:not(.list) .card-text{min-width:0;max-width:100%}
+.cards-grid:not(.list) .card-type{font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cards-grid.list{grid-template-columns:minmax(0,1fr)}
+.cards-grid.list .loyalty-card{width:100%;min-width:0;min-height:84px;aspect-ratio:auto}
+@media(min-width:650px){.cards-grid:not(.list){grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:360px){.cards-grid:not(.list){gap:9px}.cards-grid:not(.list) .loyalty-card{padding:10px}}
