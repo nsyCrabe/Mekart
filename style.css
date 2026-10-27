@@ -446,3 +446,48 @@ body[data-hl="bg"]::after{content:"";position:fixed;inset:0;z-index:50;pointer-e
 .form-colors{display:grid;gap:12px}
 .form-preview{position:sticky;top:0;z-index:4;margin:0 0 6px;padding:6px 0 10px;background:color-mix(in srgb,var(--surface) 96%,var(--bg))}
 .form-preview .loyalty-card{width:min(190px,56%)}
+
+
+/* ---------- Rafraîchissement visuel 2026 : sans changement des données ---------- */
+:root{--ui-ease:cubic-bezier(.2,.75,.2,1)}
+body{background:radial-gradient(ellipse 100% 360px at 50% -130px,color-mix(in srgb,var(--accent) 11%,transparent),transparent 75%),var(--bg)}
+.topbar{max-width:792px;margin:0 auto;padding:calc(26px + var(--safe-t)) 20px 18px;align-items:center}
+.topbar h1{font-size:clamp(1.75rem,5vw,2.2rem);font-weight:850;letter-spacing:-.055em;line-height:1.1}
+.subtitle{margin-top:7px;font-size:.82rem;font-weight:600;letter-spacing:.01em}
+.top-actions{gap:9px}
+.round-button{border-radius:17px;box-shadow:0 4px 14px -10px #0007;transition:transform .2s var(--ui-ease),background .2s,border-color .2s}
+.round-button:hover{border-color:color-mix(in srgb,var(--accent) 35%,var(--line));background:var(--soft)}
+main{max-width:792px;padding:0 20px}
+.search-box{border-radius:18px;box-shadow:0 5px 20px -17px #0009;transition:border-color .2s,box-shadow .2s}
+.search-box:focus-within{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 13%,transparent)}
+.toolbar{gap:12px;margin:18px 0 8px}
+.chip{border-radius:13px;transition:background .2s,border-color .2s,transform .2s var(--ui-ease)}
+.chip:active{transform:scale(.96)}
+.sort-select{border-radius:13px}
+.cards-grid{gap:14px;margin-top:18px}
+.loyalty-card{min-height:166px;padding:17px;border-radius:23px;isolation:isolate;box-shadow:0 15px 26px -17px #0009,0 4px 10px -7px #0007;transition:transform .22s var(--ui-ease),box-shadow .22s var(--ui-ease)}
+.loyalty-card::after{right:-38px;top:-55px;width:156px;height:156px;background:#ffffff16}
+.loyalty-card::before{content:"";position:absolute;inset:0;border:1px solid #ffffff30;border-radius:inherit;pointer-events:none;z-index:2}
+.loyalty-card:hover{transform:translateY(-3px);box-shadow:0 21px 30px -17px #0009,0 7px 14px -8px #0007}
+.loyalty-card:active{transform:scale(.975)}
+.card-logo{width:55px;height:55px;border-radius:17px;box-shadow:0 4px 12px #0002}
+.card-name{font-size:1.08rem;letter-spacing:-.025em}
+.card-type{margin-top:4px;font-weight:550}
+.menu-item{transition:background .2s,transform .2s var(--ui-ease)}
+.menu-item:active{transform:scale(.99)}
+.empty-state{padding:60px 22px}
+.empty-state h2{letter-spacing:-.03em}
+@media(min-width:650px){.cards-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.loyalty-card{min-height:185px}.topbar{padding-top:calc(32px + var(--safe-t))}}
+@media(max-width:360px){.topbar{padding-left:14px;padding-right:14px}.top-actions{gap:5px}.round-button{min-width:42px;min-height:42px}main{padding:0 14px}.loyalty-card{padding:12px;min-height:150px}.cards-grid{gap:10px}}
+@media(hover:none){.loyalty-card:hover{transform:none;box-shadow:0 15px 26px -17px #0009,0 4px 10px -7px #0007}}
+@media(prefers-reduced-motion:reduce){.loyalty-card,.round-button,.chip,.search-box,.menu-item{transition:none!important}}
+
+/* Finitions : navigation accessible, formulaires lisibles et zones tactiles */
+.bottom-nav{max-width:792px;border-radius:22px 22px 0 0;box-shadow:0 -8px 32px -20px #0008}
+.nav-add{box-shadow:0 10px 25px -9px color-mix(in srgb,var(--accent) 70%,#000)}
+.nav-add:focus-visible,.round-button:focus-visible,.loyalty-card:focus-visible,.menu-item:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.menu-item{border-radius:18px;min-height:66px;transition:background .2s,transform .2s var(--ui-ease),border-color .2s}
+.menu-item:hover{background:var(--soft);border-color:color-mix(in srgb,var(--accent) 25%,var(--line))}
+input,select,textarea{max-width:100%}
+@media(max-width:400px){.bottom-nav{padding-left:10px;padding-right:10px}.menu-item{gap:10px}}
+@media(hover:none){.menu-item:hover{background:var(--surface);border-color:var(--line)}}
