@@ -43,3 +43,35 @@ Servir les fichiers via un serveur HTTP local (par exemple `python -m http.serve
 ## Licence
 
 Aucune licence n'est déclarée actuellement.
+
+## État de la refonte (branche de préparation)
+
+Les modifications de la pull request sont expérimentales tant qu'elles ne sont pas
+validées sur un navigateur réel avec un jeu de cartes de test. Ne pas fusionner
+automatiquement cette branche.
+
+- `localStorage['loyalty_cards_v1']` reste la source de vérité.
+- `storage-backup.js` effectue une copie parallèle non destructive dans IndexedDB.
+- `crypto-vault.js` fournit des primitives AES-256-GCM **non activées** : aucune
+  donnée existante n'est chiffrée ni migrée par ce module.
+- L'import JSON limite les champs autorisés et conserve les anciens objets de
+  code cagnotte chiffré.
+- `node --test tests/*.test.cjs` exécute les tests unitaires. Les tests
+  automatisés ne remplacent pas une validation sur téléphone et navigateur.
+
+### Validation indispensable avant publication
+
+1. Exporter une sauvegarde JSON sur l'ancienne version et en garder une copie
+   hors du navigateur.
+2. Sur un profil de test, créer des cartes fidélité et cadeau, avec catégories,
+   logos, favoris, historique, PIN et code cagnotte.
+3. Vérifier l'export, l'import, le scan, le mode hors ligne et le redémarrage.
+4. Tester les sauvegardes historiques, y compris celles qui contiennent des
+   codes chiffrés, sans écraser les données existantes.
+5. Vérifier que les cartes restent présentes après mise à jour du service worker
+   et que la sauvegarde IndexedDB reflète les dernières modifications.
+6. Ne publier qu'après validation manuelle de ces scénarios.
+
+**Attention :** une phrase secrète perdue rend les données chiffrées
+indéchiffrables. Avant toute activation du chiffrement, prévoir et valider un
+parcours de récupération et une sauvegarde restaurable.
