@@ -10,7 +10,6 @@ const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
 const APP_VERSION = '5.4';
 const VIEW_KEY = 'loyalty_view_v1';
-const CARD_SIZE_KEY = 'loyalty_card_size_v1';
 const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
 const SNOOZE_KEY = 'loyalty_backup_snooze';
@@ -115,8 +114,7 @@ let tab = 'loyalty';        // onglet affiché : loyalty | gift
 let formKind = 'loyalty';   // type de carte dans le formulaire
 let removeCode = false;     // « Retirer le code enregistré » demandé dans le formulaire
 let sortMode = 'recent';
-let viewMode = 'grid';      // grid | list | stack
-let cardSize = 'normal';     // compact | normal | large
+let viewMode = 'grid';      // grid | list
 let stream = null;
 let scanTimer = null;
 let wakeLock = null;
@@ -201,9 +199,7 @@ function load() {
   loadSavedColors();
   sortMode = localStorage.getItem(SORT_KEY) || 'recent';
   if (!['recent', 'used', 'az', 'manual'].includes(sortMode)) sortMode = 'recent';
-  viewMode = ['grid', 'list', 'stack'].includes(localStorage.getItem(VIEW_KEY)) ? localStorage.getItem(VIEW_KEY) : 'grid';
-  cardSize = ['compact', 'normal', 'large'].includes(localStorage.getItem(CARD_SIZE_KEY)) ? localStorage.getItem(CARD_SIZE_KEY) : 'normal';
-  $('cardSizeSelect').value = cardSize;
+  viewMode = localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid';
   ensureOrder();
   $('sortSelect').value = sortMode;
   $('quickGuide').hidden = localStorage.getItem(GUIDE_KEY) === '1';
@@ -765,8 +761,6 @@ function render() {
   $('reorderButton').classList.toggle('active', reorderMode);
   grid.classList.toggle('reordering', reorderMode);
   grid.classList.toggle('list', viewMode === 'list');
-  grid.classList.toggle('stack', viewMode === 'stack' && !reorderMode);
-  grid.dataset.size = cardSize;
 
   const lb = $('lastBanner');
   if (tab === 'loyalty' && !q && filter.kind === 'all' && !reorderMode && pool.length >= 4) {
@@ -818,12 +812,7 @@ function buildCard(c, i = 0, preview = false) {
   return b;
 }
 function updateViewButton() {
-  const next = { grid: 'list', list: 'stack', stack: 'grid' }[viewMode] || 'grid';
-  const labels = { grid: 'Grille', list: 'Liste', stack: 'Pile' };
-  const icon = next === 'stack' ? ICONS.grid : ICONS[next];
-  $('viewButton').innerHTML = icon + '<span>' + labels[next] + '</span>';
-  $('viewButton').setAttribute('aria-label', 'Affichage actuel : ' + labels[viewMode] + '. Passer en ' + labels[next]);
-  $('viewButton').title = 'Passer en ' + labels[next];
+  $('viewButton').innerHTML = ICONS[viewMode === 'list' ? 'grid' : 'list'] + `<span>${viewMode === 'list' ? 'Grille' : 'Liste'}</span>`;
 }
 
 /* ---------- Réorganisation par glisser-déposer ---------- */
@@ -1906,13 +1895,8 @@ $('searchToggle').addEventListener('click', () => {
 });
 $('bioButton').addEventListener('click', toggleBio);
 $('viewButton').addEventListener('click', () => {
-  viewMode = { grid: 'list', list: 'stack', stack: 'grid' }[viewMode] || 'grid';
+  viewMode = viewMode === 'list' ? 'grid' : 'list';
   localStorage.setItem(VIEW_KEY, viewMode);
-  render();
-});
-$('cardSizeSelect').addEventListener('change', e => {
-  cardSize = ['compact', 'normal', 'large'].includes(e.target.value) ? e.target.value : 'normal';
-  localStorage.setItem(CARD_SIZE_KEY, cardSize);
   render();
 });
 $('backupNow').addEventListener('click', exportEncryptedCards);
