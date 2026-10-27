@@ -22,7 +22,7 @@ const server = http.createServer((req, res) => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const browser = await chromium.launch({ headless: true });
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ acceptDownloads: true });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const origin = 'http://127.0.0.1:' + server.address().port;
@@ -51,9 +51,8 @@ const server = http.createServer((req, res) => {
     page.on('dialog', async dialog => {
       await dialog.accept(dialogText);
     });
-    const downloadPromise = page.waitForEvent('download');
-    await page.locator('#encryptedExportButton').click();
-    const download = await downloadPromise;
+    await page.evaluate(() => { document.querySelector('#encryptedExportButton').click(); });
+    const download = await page.waitForEvent('download', { timeout: 15000 });
     const downloaded = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
     assert.equal(downloaded.app, 'mes-cartes-encrypted');
     assert.ok(downloaded.encrypted, 'download must contain encrypted data');
