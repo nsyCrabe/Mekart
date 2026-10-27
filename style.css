@@ -594,3 +594,11 @@ body[data-mode="dark"]{color-scheme:dark}
 .tab.active span{background:color-mix(in srgb,var(--accent) 13%,var(--surface));color:var(--text);border:1px solid var(--accent)}
 .theme-settings .tchip.active{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 12%,transparent)}
 .chip:focus-visible,.tab:focus-visible,.seg:focus-visible,.tchip:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* Rubriques de personnalisation : navigation horizontale claire et compacte */
+.dock-head{min-width:0}
+.dock-tabs{display:flex;min-width:0;flex:1 1 auto;gap:4px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity}
+.dock-tabs::-webkit-scrollbar{display:none}
+.dock-tabs .seg{flex:0 0 auto;white-space:nowrap;min-height:36px;padding:6px 10px;font-size:.75rem;scroll-snap-align:start}
+.theme-panel>[hidden]{display:none!important}
+@media(max-width:420px){.dock-head{gap:4px}.dock-head>.text-button,.dock-head>.dock-done{font-size:.76rem;padding-left:7px;padding-right:7px}}
