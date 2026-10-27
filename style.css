@@ -503,3 +503,11 @@ input,select,textarea{max-width:100%}
 .cards-grid.list .loyalty-card{width:100%;min-width:0;min-height:84px;aspect-ratio:auto}
 @media(min-width:650px){.cards-grid:not(.list){grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:360px){.cards-grid:not(.list){gap:9px}.cards-grid:not(.list) .loyalty-card{padding:10px}}
+
+/* Android PWA : teinte du fond dans la zone du geste de navigation.
+   Le navigateur conserve le contrôle de la barre système elle-même. */
+html{background-color:var(--system-nav-bg,#f3f6fc);color-scheme:normal}
+body{min-height:100dvh}
+body[data-mode="dark"]{color-scheme:dark}
+.bottom-nav{isolation:isolate}
+.bottom-nav::before{content:"";position:absolute;left:50%;bottom:0;width:100vw;height:max(env(safe-area-inset-bottom,0px),12px);transform:translateX(-50%);background:var(--system-nav-bg,var(--bg));z-index:-1;pointer-events:none}
