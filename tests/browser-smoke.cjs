@@ -51,8 +51,9 @@ const server = http.createServer((req, res) => {
     page.on('dialog', async dialog => {
       await dialog.accept(dialogText);
     });
+    const downloadPromise = page.waitForEvent('download', { timeout: 15000 });
     await page.evaluate(() => { document.querySelector('#exportButton').click(); });
-    const download = await page.waitForEvent('download', { timeout: 15000 });
+    const download = await downloadPromise;
     const downloaded = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
     assert.equal(downloaded.app, 'mes-cartes-encrypted');
     assert.ok(downloaded.encrypted, 'download must contain encrypted data');
