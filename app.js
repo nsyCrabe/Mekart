@@ -1606,10 +1606,13 @@ async function importCards(file) {
       return true;
     })
       .map(c => ({ name: c.name.trim().slice(0, 120), code: typeof c.code === 'string' ? c.code.slice(0, 2048) : '', codeType: ['barcode', 'qrcode', 'none'].includes(c.codeType) ? c.codeType : 'none', notes: typeof c.notes === 'string' ? c.notes.slice(0, 2000) : '', logo: typeof c.logo === 'string' && /^data:image\/(?:png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(c.logo) && c.logo.length <= 500000 ? c.logo : null, fav: c.fav === true, uses: Number.isSafeInteger(c.uses) && c.uses >= 0 ? c.uses : 0, lastUsed: Number.isFinite(c.lastUsed) ? c.lastUsed : undefined, createdAt: Number.isFinite(c.createdAt) ? c.createdAt : Date.now(), format: typeof c.format === 'string' ? c.format.slice(0, 30) : null, order: undefined, id: typeof c.id === 'string' && c.id.length <= 120 && c.id ? c.id : uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && c.kind !== 'loyalty' && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty'), cagnotteCode: typeof c.cagnotteCode === 'string' ? c.cagnotteCode.slice(0, 60) : (c.cagnotteCode && typeof c.cagnotteCode === 'object' && typeof c.cagnotteCode.iv === 'string' && typeof c.cagnotteCode.ct === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(c.cagnotteCode.iv) && /^[A-Za-z0-9_-]{8,8192}$/.test(c.cagnotteCode.ct) ? { iv: c.cagnotteCode.iv, ct: c.cagnotteCode.ct } : undefined), expires: /^\d{4}-\d{2}-\d{2}$/.test(c.expires || '') ? c.expires : undefined, pin: typeof c.pin === 'string' ? c.pin.slice(0, 20) : undefined }));
+    // Aucun changement de carte : ne pas réécrire le stockage inutilement.
     const backup = JSON.stringify(cards);
-    cards.push(...added);
-    ensureOrder();
-    if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : import impossible.'); }
+    if (added.length) cards.push(...added);
+    if (added.length) {
+      ensureOrder();
+      if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : import impossible.'); }
+    }
     // Ne modifier les couleurs personnalisées qu'après confirmation de l'écriture des cartes.
     if (data && Array.isArray(data.colors)) {
       const previousColors = JSON.stringify(savedColors);
