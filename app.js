@@ -1821,8 +1821,17 @@ $('themeCancel').addEventListener('click', () => {
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (theme.mode === 'auto') applyTheme(); });
 
 $('menuAppearanceButton').addEventListener('click', () => {
-  closeLayer();
-  $('themeButton').click();
+  // Remplacer la feuille Réglages par Thèmes sans déclencher history.back().
+  // Sinon le popstate différé ferme le mauvais panneau et laisse une feuille bloquée.
+  if (stack[stack.length - 1] !== 'menu') return;
+  stack.pop();
+  hideLayer('menu');
+  themeSnap = { theme: { ...theme }, wallpaper, cardStyle };
+  themeTab = 'colors';
+  themeTarget = 'accent';
+  themeAdv = false;
+  renderThemes();
+  openLayer('theme', { replace: true });
 });
 $('menuButton').addEventListener('click', () => openLayer('menu'));
 $('closeMenu').addEventListener('click', closeLayer);
