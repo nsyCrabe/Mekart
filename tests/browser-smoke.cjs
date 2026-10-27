@@ -32,7 +32,7 @@ const server = http.createServer((req, res) => {
     await page.waitForTimeout(1200);
     const actual = await page.evaluate(() => localStorage.getItem('loyalty_cards_v1'));
     assert.ok(JSON.parse(actual).some(c => c.id === 'test-preserved'), 'existing cards must survive startup');
-    assert.equal(await page.locator('#encryptedExportButton').count(), 1);
+    assert.equal(await page.locator('#exportButton').count(), 1);
     assert.equal(await page.evaluate(() => typeof window.CardsCrypto?.encrypt), 'function');
     // Round-trip réel dans Chromium, sans modifier le stockage utilisateur.
     const passphrase = 'Phrase-test-unique-2026!';
@@ -51,7 +51,7 @@ const server = http.createServer((req, res) => {
     page.on('dialog', async dialog => {
       await dialog.accept(dialogText);
     });
-    await page.evaluate(() => { document.querySelector('#encryptedExportButton').click(); });
+    await page.evaluate(() => { document.querySelector('#exportButton').click(); });
     const download = await page.waitForEvent('download', { timeout: 15000 });
     const downloaded = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
     assert.equal(downloaded.app, 'mes-cartes-encrypted');
