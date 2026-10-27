@@ -602,3 +602,21 @@ body[data-mode="dark"]{color-scheme:dark}
 .dock-tabs .seg{flex:0 0 auto;white-space:nowrap;min-height:36px;padding:6px 10px;font-size:.75rem;scroll-snap-align:start}
 .theme-panel>[hidden]{display:none!important}
 @media(max-width:420px){.dock-head{gap:4px}.dock-head>.text-button,.dock-head>.dock-done{font-size:.76rem;padding-left:7px;padding-right:7px}}
+
+/* V32 : vrai menu de sous-catégories au lieu des anciens onglets */
+#themeTabs{display:none!important}
+.theme-category-intro{padding:10px 4px 12px}
+.theme-category-intro strong{display:block;font-size:1.12rem;color:var(--text)}
+.theme-category-intro p{margin:5px 0 0;color:var(--muted);font-size:.88rem}
+.theme-category-menu{display:grid;gap:10px}
+.theme-category-item{display:flex;align-items:center;gap:13px;width:100%;min-height:74px;padding:13px;border:1px solid var(--line);border-radius:17px;background:var(--surface);color:var(--text);text-align:left;cursor:pointer;transition:border-color .16s ease,transform .16s ease}
+.theme-category-item:active{transform:scale(.99)}
+.theme-category-item:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.theme-category-symbol{display:grid;place-items:center;flex:0 0 42px;height:42px;border:1.5px solid var(--accent);border-radius:13px;color:var(--accent);font-size:1.4rem}
+.theme-category-copy{display:grid;gap:4px;flex:1;min-width:0}
+.theme-category-copy strong{font-size:.94rem}
+.theme-category-copy small{font-size:.77rem;color:var(--muted);line-height:1.35}
+.theme-category-chevron{font-size:1.7rem;color:var(--muted)}
+.theme-category-back{align-self:start;padding:9px 4px;border:0;background:transparent;color:var(--accent);font-weight:750;text-align:left}
+.theme-category-title{margin:2px 4px 8px;font-size:1.12rem;color:var(--text)}
+@media(prefers-reduced-motion:reduce){.theme-category-item{transition:none}}
