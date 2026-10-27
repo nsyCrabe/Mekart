@@ -1336,7 +1336,7 @@ async function forceUpdate() {
   if (!confirm("Forcer la mise à jour ? L'app va se recharger. Tes cartes ne sont pas supprimées.")) return;
   toast('Mise à jour en cours…');
   const clearCaches = async () => {
-    if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); }
+    if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.filter(k => k.startsWith('mes-cartes-')).map(k => caches.delete(k))); }
   };
   try {
     if ('serviceWorker' in navigator) {
