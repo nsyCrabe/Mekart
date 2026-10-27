@@ -1,5 +1,5 @@
 /* Mes cartes — cache PWA versionné. Aucune donnée utilisateur n'est effacée ici. */
-const VERSION = 'v31';
+const VERSION = 'v32';
 const CACHE = `mes-cartes-${VERSION}`;
 const CORE = ['./', 'index.html', 'style.css', 'app.js', 'storage-backup.js', 'crypto-vault.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 const CDN = [
