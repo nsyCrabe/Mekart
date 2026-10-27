@@ -34,12 +34,21 @@
   }
 
   let dbPromise;
+  function getDB() {
+    if (!dbPromise) {
+      dbPromise = openDB().catch(error => {
+        // Autoriser une nouvelle tentative si IndexedDB était indisponible.
+        dbPromise = undefined;
+        throw error;
+      });
+    }
+    return dbPromise;
+  }
   let pending = Promise.resolve();
   function mirror(raw) {
     if (!isValid(raw)) return Promise.resolve(false);
-    if (!dbPromise) dbPromise = openDB();
     pending = pending.catch(() => {}).then(async () => {
-      const db = await dbPromise;
+      const db = await getDB();
       return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE, 'readwrite');
         tx.objectStore(STORE).put({ raw, savedAt: Date.now(), schema: 1 }, KEY);
@@ -65,7 +74,7 @@
 
   // Utilitaire de diagnostic : aucune donnée sensible n'est affichée.
   window.cardsBackupStatus = async function () {
-    const db = await (dbPromise || (dbPromise = openDB()));
+    const db = await getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readonly');
       const req = tx.objectStore(STORE).get(KEY);
