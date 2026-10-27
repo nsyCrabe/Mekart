@@ -206,7 +206,7 @@ function load() {
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 }
 function save() {
-  try { localStorage.setItem(CARDS_KEY, JSON.stringify(cards)); return true; }
+  try { const raw = JSON.stringify(cards); localStorage.setItem(CARDS_KEY, raw); if (window.mirrorCardsBackup) window.mirrorCardsBackup(raw).catch(() => {}); return true; }
   catch { return false; }
 }
 
