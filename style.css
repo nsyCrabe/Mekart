@@ -511,3 +511,30 @@ body{min-height:100dvh}
 body[data-mode="dark"]{color-scheme:dark}
 .bottom-nav{isolation:isolate}
 .bottom-nav::before{content:"";position:absolute;left:50%;bottom:0;width:100vw;height:max(env(safe-area-inset-bottom,0px),12px);transform:translateX(-50%);background:var(--system-nav-bg,var(--bg));z-index:-1;pointer-events:none}
+
+/* Paramètres de thèmes : lisibilité, hiérarchie et aperçu */
+.theme-settings{gap:14px;color:var(--text)}
+.theme-intro,.theme-android-note{padding:13px 14px;border:1px solid var(--line);border-radius:16px;background:var(--soft);color:var(--text)}
+.theme-intro strong,.theme-android-note strong{display:block;font-size:.95rem}
+.theme-intro p,.theme-android-note p{margin:5px 0 0;font-size:.83rem;line-height:1.55;color:var(--text)}
+.theme-section-title{display:grid;gap:4px;margin-top:4px}
+.theme-section-title strong{font-size:.94rem;color:var(--text)}
+.theme-section-title span{font-size:.8rem;line-height:1.5;color:var(--muted)}
+.theme-mode .seg{padding:8px 4px;min-width:0;color:var(--text)}
+.theme-mode .seg.active{color:var(--on-accent);background:var(--accent)}
+.theme-preview{display:grid;gap:10px;padding:13px;border-radius:17px;border:1px solid color-mix(in srgb,var(--preview-text) 18%,var(--preview-surface));background:var(--preview-bg);color:var(--preview-text)}
+.theme-preview-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.84rem}
+.theme-preview-head span{font-size:.75rem;opacity:.8}
+.theme-preview-card{display:grid;gap:5px;padding:14px;border-radius:13px;background:var(--preview-surface);color:var(--preview-text);border:1px solid color-mix(in srgb,var(--preview-text) 16%,var(--preview-surface))}
+.theme-preview-card strong{font-size:.9rem}
+.theme-preview-card span{font-size:.78rem;line-height:1.4}
+.theme-preview-action{justify-self:start;padding:9px 14px;border-radius:11px;background:var(--preview-accent);color:var(--preview-on-accent);font-size:.8rem;font-weight:750}
+.theme-settings .t-meta{align-items:flex-start;flex-wrap:wrap}
+.theme-settings .t-meta span{flex:1;min-width:150px;color:var(--text);line-height:1.5}
+.theme-settings .t-meta button{white-space:normal;height:auto;min-height:38px}
+.theme-contrast-hint{margin:0;color:var(--text);font-size:.8rem;line-height:1.5}
+.theme-settings .tchip{color:var(--text)}
+.theme-settings .tchip.more{color:var(--text)}
+.theme-settings .cp-hex{color:var(--text);background:var(--surface)}
+.theme-settings .cp-save{color:var(--text)}
+.theme-settings button:focus-visible,.theme-settings input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
