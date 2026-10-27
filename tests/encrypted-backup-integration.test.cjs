@@ -7,7 +7,10 @@ const html = fs.readFileSync('index.html', 'utf8');
 const sw = fs.readFileSync('sw.js', 'utf8');
 
 test('encrypted export and import are wired to the crypto module', () => {
-  assert.match(html, /id="encryptedExportButton"/);
+  assert.match(html, /id="exportButton"/);
+  assert.doesNotMatch(html, /id="encryptedExportButton"/);
+  assert.match(app, /\$\('exportButton'\)\.addEventListener\('click', exportEncryptedCards\)/);
+  assert.doesNotMatch(app, /function exportCards\(\)/);
   assert.match(html, /src="crypto-vault\.js"/);
   assert.match(app, /window\.CardsCrypto\.encrypt\(/);
   assert.match(app, /window\.CardsCrypto\.decrypt\(/);
