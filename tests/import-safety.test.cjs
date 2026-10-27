@@ -32,3 +32,10 @@ test('import persists custom colors only after card save succeeds', () => {
   const colors = body.indexOf('persistSavedColors()');
   assert.ok(saved >= 0 && colors > saved, 'custom colors must not persist before card save');
 });
+
+test('duplicate card identifiers inside one backup are rejected', () => {
+  const body = app.slice(app.indexOf('async function importCards(file) {'), app.indexOf('/* ---------- Événements ---------- */'));
+  assert.match(body, /const seenImportIds = new Set\(\)/);
+  assert.match(body, /seenImportIds\.has\(c\.id\)/);
+  assert.match(body, /seenImportIds\.add\(c\.id\)/);
+});
