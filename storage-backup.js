@@ -57,15 +57,10 @@
     if (existing !== null) mirror(existing).catch(() => {});
   } catch {}
 
-  // Les écritures passent toujours d'abord par localStorage, comme auparavant.
-  // On réplique seulement les écritures réussies et valides.
-  const originalSetItem = Storage.prototype.setItem;
-  Storage.prototype.setItem = function (key, value) {
-    const result = originalSetItem.apply(this, arguments);
-    if (this === localStorage && key === KEY) {
-      mirror(String(value)).catch(() => {});
-    }
-    return result;
+  // API explicite : aucune modification globale de Storage.prototype.
+  // L'appelant doit avoir terminé son écriture localStorage avec succès.
+  window.mirrorCardsBackup = function (raw) {
+    return mirror(raw);
   };
 
   // Utilitaire de diagnostic : aucune donnée sensible n'est affichée.
