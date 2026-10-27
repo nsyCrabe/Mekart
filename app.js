@@ -616,13 +616,37 @@ function wallpaperPanel() {
 }
 function renderThemes() {
   const tabs = $('themeTabs');
+  const content = $('themeList');
   tabs.replaceChildren();
-  [['app', "Thème de l'app"], ['cards', 'Thème des cartes'], ['colors', 'Couleurs'], ['wallpaper', "Fond d'écran"]].forEach(([id, label]) => {
-    const b = el('button', { type: 'button', role: 'tab', class: `seg${themeTab === id ? ' active' : ''}`, text: label });
-    b.addEventListener('click', () => { themeTab = id; renderThemes(); });
-    tabs.append(b);
-  });
-  $('themeList').replaceChildren(themeTab === 'wallpaper' ? wallpaperPanel() : colorsPanel());
+  content.replaceChildren();
+  const sections = [
+    ['app', "Thème de l'application", 'Mode clair ou sombre et palettes prédéfinies', 'palette'],
+    ['cards', 'Thème des cartes', 'Classique, Élégant ou Épuré', 'credit-card'],
+    ['colors', 'Couleurs personnalisées', 'Couleurs, contraste et options avancées', 'paintbrush'],
+    ['wallpaper', "Fond d'écran", 'Image, flou et voile', 'image']
+  ];
+  if (themeTab === 'home') {
+    const heading = el('div', { class: 'theme-category-intro' },
+      el('strong', { text: 'Personnalisation' }),
+      el('p', { text: 'Choisis ce que tu souhaites modifier.' }));
+    const menu = el('div', { class: 'theme-category-menu' });
+    sections.forEach(([id, label, desc]) => {
+      const btn = el('button', { type: 'button', class: 'theme-category-item' },
+        el('span', { class: 'theme-category-symbol', text: id === 'app' ? '◐' : id === 'cards' ? '▣' : id === 'colors' ? '◉' : '▧' }),
+        el('span', { class: 'theme-category-copy' },
+          el('strong', { text: label }), el('small', { text: desc })),
+        el('span', { class: 'theme-category-chevron', text: '›', 'aria-hidden': 'true' }));
+      btn.addEventListener('click', () => { themeTab = id; renderThemes(); });
+      menu.append(btn);
+    });
+    content.append(heading, menu);
+    return;
+  }
+  const current = sections.find(x => x[0] === themeTab) || sections[0];
+  const back = el('button', { type: 'button', class: 'theme-category-back', text: '‹ Toutes les catégories' });
+  back.addEventListener('click', () => { themeTab = 'home'; renderThemes(); });
+  content.append(back, el('h3', { class: 'theme-category-title', text: current[1] }),
+    themeTab === 'wallpaper' ? wallpaperPanel() : colorsPanel());
 }
 function resizeWallpaper(file) {
   return new Promise((resolve, reject) => {
@@ -1810,7 +1834,7 @@ $('wpInput').addEventListener('change', async e => {
 });
 $('themeButton').addEventListener('click', () => {
   themeSnap = { theme: { ...theme }, wallpaper, cardStyle };
-  themeTab = 'app'; themeTarget = 'accent'; themeAdv = false;
+  themeTab = 'home'; themeTarget = 'accent'; themeAdv = false;
   renderThemes();
   openLayer('theme');
 });
@@ -1837,7 +1861,7 @@ $('menuAppearanceButton').addEventListener('click', () => {
   stack.pop();
   hideLayer('menu');
   themeSnap = { theme: { ...theme }, wallpaper, cardStyle };
-  themeTab = 'app';
+  themeTab = 'home';
   themeTarget = 'accent';
   themeAdv = false;
   renderThemes();
