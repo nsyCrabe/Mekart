@@ -206,7 +206,7 @@ function load() {
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 }
 function save() {
-  try { localStorage.setItem(CARDS_KEY, JSON.stringify(cards)); return true; }
+  try { const raw = JSON.stringify(cards); localStorage.setItem(CARDS_KEY, raw); if (window.mirrorCardsBackup) window.mirrorCardsBackup(raw).catch(() => {}); return true; }
   catch { return false; }
 }
 
@@ -1336,7 +1336,7 @@ async function forceUpdate() {
   if (!confirm("Forcer la mise à jour ? L'app va se recharger. Tes cartes ne sont pas supprimées.")) return;
   toast('Mise à jour en cours…');
   const clearCaches = async () => {
-    if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); }
+    if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.filter(k => k.startsWith('mes-cartes-')).map(k => caches.delete(k))); }
   };
   try {
     if ('serviceWorker' in navigator) {
@@ -1487,26 +1487,41 @@ async function legacyMasterKey(vault) {
 }
 async function convertLegacyCodes() {
   const vault = loadVault();
-  if (!vault) {
-    cards.forEach(c => { if (isLegacyCode(c)) delete c.cagnotteCode; });
-    save(); render();
-    return toast('Protection introuvable : ressaisis tes codes cagnotte.');
-  }
+  // Ne jamais effacer des codes si la clé de déchiffrement est introuvable.
+  if (!vault) return toast('Protection ancienne introuvable : les codes sont conservés. Restaure ta sauvegarde de protection.');
   const raw = await legacyMasterKey(vault);
   if (!raw) return;
   const key = await aesKey(raw);
-  let ok = 0, lost = 0;
-  for (const c of cards) {
-    if (!isLegacyCode(c)) continue;
-    try { c.cagnotteCode = new TextDecoder().decode(await decryptBlob(key, c.cagnotteCode)); ok++; }
-    catch { delete c.cagnotteCode; lost++; }
+  const updates = [];
+  let failed = 0;
+  try {
+    for (const c of cards) {
+      if (!isLegacyCode(c)) continue;
+      try {
+        const value = new TextDecoder().decode(await decryptBlob(key, c.cagnotteCode));
+        updates.push({ id: c.id, value });
+      } catch { failed++; }
+    }
+  } finally {
+    raw.fill(0);
   }
-  raw.fill(0);
-  localStorage.removeItem(VAULT_KEY);
-  save(); render();
+  // Conversion atomique en mémoire : ne jamais supprimer les codes indéchiffrables.
+  if (failed) return toast(`${failed} code(s) non déchiffré(s) : aucune conversion effectuée, tes codes sont conservés.`);
+  const original = cards.map(c => ({ ...c }));
+  for (const { id, value } of updates) {
+    const c = cards.find(x => x.id === id);
+    if (c) c.cagnotteCode = value;
+  }
+  if (!save()) {
+    cards = original;
+    return toast('Stockage plein : conversion annulée, anciens codes conservés.');
+  }
+  // Ne pas effacer le coffre historique : il peut encore servir à restaurer
+  // une ancienne sauvegarde et sa suppression serait irréversible.
+  render();
   const cur = cards.find(x => x.id === openedId);
   if (cur) refreshCodeRow(cur);
-  toast(lost ? `${ok} code${ok > 1 ? 's' : ''} converti${ok > 1 ? 's' : ''}, ${lost} à ressaisir.` : `${ok} code${ok > 1 ? 's' : ''} converti${ok > 1 ? 's' : ''} ✓`);
+  toast(`${updates.length} code(s) converti(s) ✓ Conserve ta sauvegarde de secours.`);
 }
 
 /* ---------- Sauvegarde (export / import) ---------- */
@@ -1537,30 +1552,82 @@ function exportCards() {
   updateBackupInfo();
   toast('Sauvegarde téléchargée ✓');
 }
+async function exportEncryptedCards() {
+  if (!cards.length) return toast('Aucune carte à exporter.');
+  if (!window.CardsCrypto || !crypto?.subtle) return toast('Chiffrement indisponible sur cet appareil.');
+  const phrase = prompt('Choisis une phrase secrète de 12 caractères minimum. Sans elle, la sauvegarde sera irrécupérable :');
+  if (phrase === null) return;
+  if (phrase.length < 12) return toast('Phrase secrète trop courte (12 caractères minimum).');
+  const confirmation = prompt('Confirme exactement la phrase secrète :');
+  if (confirmation === null) return;
+  if (phrase !== confirmation) return toast('Les phrases secrètes ne correspondent pas.');
+  try {
+    const payload = { app: 'mes-cartes', version: 5, exportedAt: new Date().toISOString(), cards, colors: savedColors };
+    const encrypted = await window.CardsCrypto.encrypt(JSON.stringify(payload), phrase);
+    const blob = new Blob([JSON.stringify({ app: 'mes-cartes-encrypted', encrypted })], { type: 'application/json' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: `mes-cartes-chiffre-${new Date().toISOString().slice(0, 10)}.json` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    try { localStorage.setItem(BACKUP_KEY, String(Date.now())); } catch {}
+    updateBackupInfo();
+    toast('Sauvegarde chiffrée téléchargée ✓ Garde ta phrase secrète.');
+  } catch { toast('Impossible de créer la sauvegarde chiffrée.'); }
+}
 async function importCards(file) {
   try {
-    const data = JSON.parse(await file.text());
-    const list = Array.isArray(data) ? data : data.cards;
-    if (!Array.isArray(list)) throw new Error('format');
-    if (Array.isArray(data.colors)) {
-      data.colors.forEach(c => {
-        if (c && isHex(c.hex) && savedColors.length < 36 && !savedColors.some(x => x.hex === c.hex.toLowerCase())) savedColors.push({ hex: c.hex.toLowerCase(), name: String(c.name || '').slice(0, 24) });
-      });
-      persistSavedColors();
+    if (file.size > 25 * 1024 * 1024) throw new Error('file too large');
+    let data = JSON.parse(await file.text());
+    if (data && data.app === 'mes-cartes-encrypted') {
+      if (!window.CardsCrypto) throw new Error('crypto unavailable');
+      const phrase = prompt('Phrase secrète de cette sauvegarde chiffrée :');
+      if (phrase === null) return;
+      try {
+        data = JSON.parse(await window.CardsCrypto.decrypt(data.encrypted, phrase));
+      } catch {
+        return toast('Déchiffrement impossible : phrase secrète incorrecte ou fichier endommagé.');
+      }
     }
+    const list = Array.isArray(data) ? data : (data && typeof data === 'object' ? data.cards : null);
+    if (!Array.isArray(list)) throw new Error('format');
+    // Les identifiants absents ou dupliqués dans un même fichier doivent
+    // être régénérés pour ne jamais introduire deux cartes avec le même id.
+    const seenImportIds = new Set();
     const known = new Set(cards.map(c => c.id));
     const sig = c => `${norm(c.name)}|${c.code}`;
     const sigs = new Set(cards.filter(c => c.code).map(sig));
     const added = list.filter(c => {
-      if (!c || typeof c.name !== 'string' || !c.name || known.has(c.id)) return false;
+      if (!c || typeof c.name !== 'string' || !c.name.trim()) return false;
+      if (typeof c.id === 'string' && c.id && known.has(c.id)) return false;
+      if (typeof c.id === 'string' && c.id) {
+        if (seenImportIds.has(c.id)) return false;
+        seenImportIds.add(c.id);
+      }
       if (c.code) { const k = sig(c); if (sigs.has(k)) return false; sigs.add(k); }   // même nom + même numéro = doublon
       return true;
     })
-      .map(c => ({ ...c, order: undefined, id: c.id || uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && c.kind !== 'loyalty' && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty'), cagnotteCode: typeof c.cagnotteCode === 'string' ? c.cagnotteCode.slice(0, 60) : undefined, expires: /^\d{4}-\d{2}-\d{2}$/.test(c.expires || '') ? c.expires : undefined, pin: typeof c.pin === 'string' ? c.pin.slice(0, 20) : undefined }));
+      .map(c => ({ name: c.name.trim().slice(0, 120), code: typeof c.code === 'string' ? c.code.slice(0, 2048) : '', codeType: ['barcode', 'qrcode', 'none'].includes(c.codeType) ? c.codeType : 'none', notes: typeof c.notes === 'string' ? c.notes.slice(0, 2000) : '', logo: typeof c.logo === 'string' && /^data:image\/(?:png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(c.logo) && c.logo.length <= 500000 ? c.logo : null, fav: c.fav === true, uses: Number.isSafeInteger(c.uses) && c.uses >= 0 ? c.uses : 0, lastUsed: Number.isFinite(c.lastUsed) ? c.lastUsed : undefined, createdAt: Number.isFinite(c.createdAt) ? c.createdAt : Date.now(), format: typeof c.format === 'string' ? c.format.slice(0, 30) : null, order: undefined, id: typeof c.id === 'string' && c.id.length <= 120 && c.id ? c.id : uid(), color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : COLORS[0], category: catById(c.category) ? c.category : '', tags: Array.isArray(c.tags) ? c.tags.slice(0, 8).map(t => String(t).slice(0, 20)) : [], balance: Number.isFinite(c.balance) ? round2(c.balance) : undefined, history: Number.isFinite(c.balance) && c.kind !== 'loyalty' && Array.isArray(c.history) ? c.history.filter(h => h && Number.isFinite(h.d)).slice(-100).map(h => ({ t: +h.t || 0, d: round2(h.d), a: round2(+h.a || 0), n: String(h.n || '').slice(0, 40) })) : undefined, kind: (c.kind === 'gift' || c.kind === 'loyalty') ? c.kind : (Number.isFinite(c.balance) ? 'gift' : 'loyalty'), cagnotteCode: typeof c.cagnotteCode === 'string' ? c.cagnotteCode.slice(0, 60) : (c.cagnotteCode && typeof c.cagnotteCode === 'object' && typeof c.cagnotteCode.iv === 'string' && typeof c.cagnotteCode.ct === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(c.cagnotteCode.iv) && /^[A-Za-z0-9_-]{8,8192}$/.test(c.cagnotteCode.ct) ? { iv: c.cagnotteCode.iv, ct: c.cagnotteCode.ct } : undefined), expires: /^\d{4}-\d{2}-\d{2}$/.test(c.expires || '') ? c.expires : undefined, pin: typeof c.pin === 'string' ? c.pin.slice(0, 20) : undefined }));
+    // Aucun changement de carte : ne pas réécrire le stockage inutilement.
     const backup = JSON.stringify(cards);
-    cards.push(...added);
-    ensureOrder();
-    if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : import impossible.'); }
+    if (added.length) cards.push(...added);
+    if (added.length) {
+      ensureOrder();
+      if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : import impossible.'); }
+    }
+    // Ne modifier les couleurs personnalisées qu'après confirmation de l'écriture des cartes.
+    if (data && Array.isArray(data.colors)) {
+      const previousColors = JSON.stringify(savedColors);
+      try {
+        data.colors.forEach(c => {
+          if (c && typeof c.hex === 'string' && isHex(c.hex) && savedColors.length < 36 &&
+              !savedColors.some(x => x.hex === c.hex.toLowerCase())) {
+            savedColors.push({ hex: c.hex.toLowerCase(), name: String(c.name || '').slice(0, 24) });
+          }
+        });
+        persistSavedColors();
+      } catch {
+        savedColors = JSON.parse(previousColors);
+      }
+    }
     render();
     toast(added.length ? `${added.length} carte${added.length > 1 ? 's' : ''} importée${added.length > 1 ? 's' : ''} ✓` : 'Aucune nouvelle carte dans ce fichier.');
   } catch { toast('Fichier de sauvegarde invalide.'); }
@@ -1670,6 +1737,7 @@ $('menuButton').addEventListener('click', () => openLayer('menu'));
 $('closeMenu').addEventListener('click', closeLayer);
 $('menuBackdrop').addEventListener('click', closeLayer);
 $('exportButton').addEventListener('click', exportCards);
+$('encryptedExportButton').addEventListener('click', exportEncryptedCards);
 $('importButton').addEventListener('click', () => $('importInput').click());
 $('importInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await importCards(f); e.target.value = ''; });
 $('installButton').addEventListener('click', async () => {
