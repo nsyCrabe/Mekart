@@ -240,6 +240,9 @@
       <span><strong>Réafficher l'aide</strong><small>Le bandeau de démarrage</small></span>
     </button>
   </div>
+  <button class="menu-item" id="encryptedExportButton" type="button">
+    <span><strong>Exporter une sauvegarde chiffrée</strong><small>Protège le fichier avec une phrase secrète (à conserver)</small></span>
+  </button>
   <input id="importInput" type="file" accept="application/json,.json" hidden>
   <p class="menu-note" id="backupNote"></p>
   <p class="menu-note">Tes cartes sont enregistrées uniquement sur cet appareil. Si tu changes de téléphone ou effaces les données du navigateur, elles disparaissent : exporte une sauvegarde de temps en temps.</p>
@@ -342,6 +345,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="storage-backup.js"></script>
+<script src="crypto-vault.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
