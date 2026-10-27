@@ -39,3 +39,8 @@ test('duplicate card identifiers inside one backup are rejected', () => {
   assert.match(body, /seenImportIds\.has\(c\.id\)/);
   assert.match(body, /seenImportIds\.add\(c\.id\)/);
 });
+
+test('importing only duplicate cards does not rewrite the stored cards', () => {
+  const body = app.slice(app.indexOf('async function importCards(file) {'), app.indexOf('/* ---------- Événements ---------- */'));
+  assert.match(body, /if \(added\.length\) \{\s*ensureOrder\(\);\s*if \(!save\(\)\)/);
+});
