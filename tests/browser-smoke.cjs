@@ -46,6 +46,27 @@ const server = http.createServer((req, res) => {
       'wrong password must reject');
     assert.equal(await page.evaluate(() => localStorage.getItem('loyalty_cards_v1')), actual,
       'encryption must not mutate existing cards');
+    // Vérifier les chemins d'interface : téléchargement et import chiffré.
+    const dialogText = passphrase;
+    page.on('dialog', async dialog => {
+      await dialog.accept(dialogText);
+    });
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#encryptedExportButton').click();
+    const download = await downloadPromise;
+    const downloaded = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
+    assert.equal(downloaded.app, 'mes-cartes-encrypted');
+    assert.ok(downloaded.encrypted, 'download must contain encrypted data');
+    assert.ok(!JSON.stringify(downloaded).includes('Carte conservée'), 'download must not contain plaintext card name');
+    const beforeImport = await page.evaluate(() => localStorage.getItem('loyalty_cards_v1'));
+    await page.locator('#importInput').setInputFiles({
+      name: 'encrypted-backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(downloaded))
+    });
+    await page.waitForTimeout(500);
+    assert.equal(await page.evaluate(() => localStorage.getItem('loyalty_cards_v1')), beforeImport,
+      'importing an existing encrypted card must not duplicate or delete it');
     assert.deepEqual(errors, [], 'no uncaught application errors');
     console.log('Browser smoke passed: existing card preserved, encrypted backup available, no page errors');
   } finally {
