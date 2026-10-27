@@ -120,3 +120,13 @@ test('IndexedDB failures do not alter the local card storage', async () => {
   await assert.rejects(window.mirrorCardsBackup(two));
   assert.equal(localStorage.getItem('loyalty_cards_v1'), one);
 });
+
+test('backup status waits for pending writes', async () => {
+  const env = setup(one);
+  env.localStorage.setItem('loyalty_cards_v1', two);
+  const write = env.window.mirrorCardsBackup(two);
+  const status = await env.window.cardsBackupStatus();
+  await write;
+  assert.equal(status.available, true);
+  assert.equal(env.writes.at(-1).raw, two);
+});
