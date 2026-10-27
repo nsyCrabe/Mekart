@@ -74,6 +74,8 @@
 
   // Utilitaire de diagnostic : aucune donnée sensible n'est affichée.
   window.cardsBackupStatus = async function () {
+    // Attendre les écritures déjà planifiées pour éviter un statut obsolète.
+    await pending.catch(() => {});
     const db = await getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readonly');
