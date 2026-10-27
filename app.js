@@ -440,62 +440,114 @@ function rangeRow(label, key, min, max, step, unit) {
   return el('div', { class: 'range-row' }, el('div', { class: 'range-top' }, el('span', { text: label }), val), r);
 }
 function colorsPanel() {
-  const box = el('div', { class: 'theme-panel' });
-  const tgt = TARGETS.find(t => t.key === themeTarget && (!t.adv || themeAdv)) || TARGETS[0];
+  const box = el('div', { class: 'theme-panel theme-settings' });
+  const intro = el('div', { class: 'theme-intro' },
+    el('strong', { text: 'Personnalise ton application' }),
+    el('p', { text: 'Choisis d’abord l’apparence, puis les couleurs. Les changements sont visibles immédiatement. Annuler restaure tes réglages précédents.' }));
+  box.append(intro);
 
-  const mode = el('div', { class: 'segmented three', role: 'radiogroup', 'aria-label': 'Mode de base' });
-  [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']].forEach(([v, l]) => {
-    const b = el('button', { type: 'button', class: `seg${theme.mode === v ? ' active' : ''}`, text: l });
-    b.addEventListener('click', () => setThemeKey({ mode: v }, true));
+  const modeTitle = el('div', { class: 'theme-section-title' }, el('strong', { text: '1. Apparence' }),
+    el('span', { text: 'Le mode clair utilise du texte foncé ; le mode sombre utilise du texte clair.' }));
+  const mode = el('div', { class: 'segmented three theme-mode', role: 'radiogroup', 'aria-label': 'Apparence de l’application' });
+  [['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].forEach(([v, l]) => {
+    const b = el('button', { type: 'button', class: `seg${theme.mode === v ? ' active' : ''}`, text: l,
+      'aria-pressed': theme.mode === v ? 'true' : 'false' });
+    b.addEventListener('click', () => {
+      // Un ancien texte blanc personnalisé ne doit pas rester blanc sur le mode clair.
+      // Les couleurs de fond personnalisées restent disponibles après le changement.
+      setThemeKey({ mode: v, text: null }, true);
+    });
     mode.append(b);
   });
+  box.append(modeTitle, mode);
 
+  const c = computeTheme();
+  const preview = el('div', { class: 'theme-preview', 'aria-label': 'Aperçu du thème' });
+  preview.style.setProperty('--preview-bg', c.bg);
+  preview.style.setProperty('--preview-surface', c.surface);
+  preview.style.setProperty('--preview-text', c.text);
+  preview.style.setProperty('--preview-accent', c.accent);
+  preview.style.setProperty('--preview-on-accent', isLight(c.accent) ? '#101114' : '#fff');
+  preview.append(el('div', { class: 'theme-preview-head' },
+    el('strong', { text: 'Aperçu de Mes Cartes' }),
+    el('span', { text: c.dark ? 'Sombre' : 'Clair' })),
+    el('div', { class: 'theme-preview-card' },
+      el('strong', { text: 'Ma carte de fidélité' }),
+      el('span', { text: 'Voici comment apparaissent les textes et les surfaces.' })),
+    el('div', { class: 'theme-preview-action', text: 'Exemple de bouton' }));
+  box.append(preview);
+
+  const section = el('div', { class: 'theme-section-title' }, el('strong', { text: '2. Couleurs' }),
+    el('span', { text: 'Sélectionne une zone, puis choisis sa couleur. Les options avancées sont facultatives.' }));
+  box.append(section);
+  const tgt = TARGETS.find(t => t.key === themeTarget && (!t.adv || themeAdv)) || TARGETS[0];
   const dots = {};
-  const chips = el('div', { class: 'tchips', role: 'tablist', 'aria-label': 'Quoi colorer' });
+  const chips = el('div', { class: 'tchips', role: 'group', 'aria-label': 'Zone à personnaliser' });
   TARGETS.filter(t => !t.adv || themeAdv).forEach(t => {
     const i = el('i');
     dots[t.key] = i;
-    const b = el('button', { type: 'button', class: `tchip${t.key === tgt.key ? ' active' : ''}` }, i, t.label);
+    const b = el('button', { type: 'button', class: `tchip${t.key === tgt.key ? ' active' : ''}`,
+      'aria-pressed': t.key === tgt.key ? 'true' : 'false' }, i, t.label);
     b.addEventListener('click', () => { themeTarget = t.key; flashZone(t.key); renderThemes(); });
     chips.append(b);
   });
-  const more = el('button', { type: 'button', class: 'tchip more', text: themeAdv ? 'Moins ▴' : 'Avancé ▾' });
+  const more = el('button', { type: 'button', class: 'tchip more', text: themeAdv ? 'Masquer les options avancées ▴' : 'Options avancées ▾',
+    'aria-expanded': themeAdv ? 'true' : 'false' });
   more.addEventListener('click', () => {
     themeAdv = !themeAdv;
-    if (!themeAdv && TARGETS.find(t => t.key === themeTarget).adv) themeTarget = 'accent';
+    if (!themeAdv && TARGETS.find(t => t.key === themeTarget)?.adv) themeTarget = 'accent';
     renderThemes();
   });
   chips.append(more);
+  box.append(chips);
 
   const desc = el('span');
   const resetBtn = el('button', { type: 'button', class: 'chip small' });
+  const contrastHint = el('p', { class: 'theme-contrast-hint' });
   const sync = () => {
-    const c = computeTheme();
-    TARGETS.forEach(t => { if (dots[t.key]) dots[t.key].style.setProperty('--c', c[t.key]); });
+    const current = computeTheme();
+    TARGETS.forEach(t => { if (dots[t.key]) dots[t.key].style.setProperty('--c', current[t.key]); });
     const isAuto = tgt.auto && theme[tgt.key] === null;
-    desc.textContent = tgt.desc + (isAuto ? ' · automatique' : '');
-    resetBtn.textContent = tgt.auto ? 'Auto' : 'Réinitialiser';
+    desc.textContent = tgt.desc + (isAuto ? ' · couleur automatique' : ' · couleur personnalisée');
+    resetBtn.textContent = tgt.auto ? 'Utiliser la couleur automatique' : 'Rétablir la couleur d’origine';
     resetBtn.hidden = tgt.auto ? isAuto : theme.accent === DEFAULT_THEME.accent;
+    const difference = Math.abs(lum(current.text) - lum(current.surface));
+    contrastHint.textContent = tgt.key === 'text'
+      ? (difference < 0.35 ? '⚠️ Ce texte risque d’être difficile à lire sur les surfaces. Utilise « couleur automatique » pour retrouver un bon contraste.' : '✓ Le texte se distingue du fond des surfaces.')
+      : 'Astuce : les couleurs du texte sont calculées automatiquement, sauf si tu les personnalises dans les options avancées.';
+    const p = preview.style;
+    p.setProperty('--preview-bg', current.bg);
+    p.setProperty('--preview-surface', current.surface);
+    p.setProperty('--preview-text', current.text);
+    p.setProperty('--preview-accent', current.accent);
+    p.setProperty('--preview-on-accent', isLight(current.accent) ? '#101114' : '#fff');
+    preview.querySelector('.theme-preview-head span').textContent = current.dark ? 'Sombre' : 'Clair';
   };
   resetBtn.addEventListener('click', () => {
     theme[tgt.key] = tgt.auto ? null : DEFAULT_THEME[tgt.key];
     commitTheme();
     renderThemes();
   });
-  const meta = el('div', { class: 't-meta' }, desc, resetBtn);
-
+  box.append(el('div', { class: 't-meta' }, desc, resetBtn));
   const picker = buildPicker(computeTheme()[tgt.key], hexv => { theme[tgt.key] = hexv; commitTheme(); sync(); });
-  sync();
-  box.append(mode, chips, meta, picker);
+  box.append(picker, contrastHint);
 
   if (themeAdv) {
-    const halo = el('label', { class: 'check-row' }, el('input', { type: 'checkbox' }), el('span', { text: 'Halo coloré en fond' }));
+    const halo = el('label', { class: 'check-row' }, el('input', { type: 'checkbox' }),
+      el('span', { text: 'Afficher un halo coloré en arrière-plan' }));
     halo.firstChild.checked = theme.halo;
     halo.firstChild.addEventListener('change', e => setThemeKey({ halo: e.target.checked }));
-    const reset = el('button', { type: 'button', class: 'secondary-button', text: 'Tout réinitialiser' });
-    reset.addEventListener('click', () => { setThemeKey({ ...DEFAULT_THEME, wpBlur: theme.wpBlur, wpVeil: theme.wpVeil }, true); toast('Couleurs réinitialisées'); });
+    const reset = el('button', { type: 'button', class: 'secondary-button', text: 'Réinitialiser toutes les couleurs' });
+    reset.addEventListener('click', () => {
+      setThemeKey({ ...DEFAULT_THEME, mode: theme.mode, wpBlur: theme.wpBlur, wpVeil: theme.wpVeil }, true);
+      toast('Couleurs réinitialisées');
+    });
     box.append(halo, reset);
   }
+  box.append(el('div', { class: 'theme-android-note' },
+    el('strong', { text: 'Barre de navigation Android' }),
+    el('p', { text: 'Le fond derrière le trait de navigation dépend aussi de la couleur enregistrée lors de l’installation de la PWA. Il peut rester sombre même si tu changes le thème ici. Une réinstallation peut être nécessaire pour changer cette couleur système : sauvegarde tes cartes avant toute réinstallation.' })));
+  sync();
   return box;
 }
 function wallpaperPanel() {
