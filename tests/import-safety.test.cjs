@@ -23,3 +23,12 @@ test('legacy encrypted cagnotte codes remain importable', () => {
   assert.match(body, /typeof c\.cagnotteCode\.ct === 'string'/);
   assert.match(body, /\{ iv: c\.cagnotteCode\.iv, ct: c\.cagnotteCode\.ct \}/);
 });
+
+test('import persists custom colors only after card save succeeds', () => {
+  const start = app.indexOf('async function importCards(file) {');
+  const end = app.indexOf('/* ---------- Événements ---------- */', start);
+  const body = app.slice(start, end);
+  const saved = body.indexOf('if (!save())');
+  const colors = body.indexOf('persistSavedColors()');
+  assert.ok(saved >= 0 && colors > saved, 'custom colors must not persist before card save');
+});
