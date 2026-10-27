@@ -1788,7 +1788,7 @@ $('viewButton').addEventListener('click', () => {
   localStorage.setItem(VIEW_KEY, viewMode);
   render();
 });
-$('backupNow').addEventListener('click', exportCards);
+$('backupNow').addEventListener('click', exportEncryptedCards);
 $('backupLater').addEventListener('click', () => {
   try { localStorage.setItem(SNOOZE_KEY, String(Date.now() + 7 * 864e5)); } catch {}
   $('backupBanner').hidden = true;
