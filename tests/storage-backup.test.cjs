@@ -66,6 +66,7 @@ test('copies existing cards without changing localStorage', async () => {
 test('mirrors subsequent successful writes in order', async () => {
   const env = setup(one);
   env.localStorage.setItem('loyalty_cards_v1', two);
+  await env.window.mirrorCardsBackup(two);
   await env.settle();
   assert.equal(env.writes.at(-1).raw, two);
   assert.equal(env.localStorage.getItem('loyalty_cards_v1'), two);
@@ -76,6 +77,7 @@ test('rejects malformed payloads and never removes original', async () => {
   await env.settle();
   const count = env.writes.length;
   env.localStorage.setItem('loyalty_cards_v1', '{broken');
+  await env.window.mirrorCardsBackup('{broken');
   await env.settle();
   assert.equal(env.writes.length, count);
   assert.equal(env.values.get('loyalty_cards_v1'), '{broken');
@@ -95,4 +97,9 @@ test('does not mirror unrelated localStorage settings', async () => {
   env.localStorage.setItem('loyalty_theme_v2', 'dark');
   await env.settle();
   assert.equal(env.writes.length, count);
+});
+
+test('does not monkeypatch Storage.prototype.setItem', () => {
+  assert.doesNotMatch(source, /Storage\.prototype\.setItem\s*=/);
+  assert.match(source, /window\.mirrorCardsBackup\s*=/);
 });
