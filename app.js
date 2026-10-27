@@ -1487,26 +1487,41 @@ async function legacyMasterKey(vault) {
 }
 async function convertLegacyCodes() {
   const vault = loadVault();
-  if (!vault) {
-    cards.forEach(c => { if (isLegacyCode(c)) delete c.cagnotteCode; });
-    save(); render();
-    return toast('Protection introuvable : ressaisis tes codes cagnotte.');
-  }
+  // Ne jamais effacer des codes si la clé de déchiffrement est introuvable.
+  if (!vault) return toast('Protection ancienne introuvable : les codes sont conservés. Restaure ta sauvegarde de protection.');
   const raw = await legacyMasterKey(vault);
   if (!raw) return;
   const key = await aesKey(raw);
-  let ok = 0, lost = 0;
-  for (const c of cards) {
-    if (!isLegacyCode(c)) continue;
-    try { c.cagnotteCode = new TextDecoder().decode(await decryptBlob(key, c.cagnotteCode)); ok++; }
-    catch { delete c.cagnotteCode; lost++; }
+  const updates = [];
+  let failed = 0;
+  try {
+    for (const c of cards) {
+      if (!isLegacyCode(c)) continue;
+      try {
+        const value = new TextDecoder().decode(await decryptBlob(key, c.cagnotteCode));
+        updates.push({ id: c.id, value });
+      } catch { failed++; }
+    }
+  } finally {
+    raw.fill(0);
   }
-  raw.fill(0);
-  localStorage.removeItem(VAULT_KEY);
-  save(); render();
+  // Conversion atomique en mémoire : ne jamais supprimer les codes indéchiffrables.
+  if (failed) return toast(`${failed} code(s) non déchiffré(s) : aucune conversion effectuée, tes codes sont conservés.`);
+  const original = cards.map(c => ({ ...c }));
+  for (const { id, value } of updates) {
+    const c = cards.find(x => x.id === id);
+    if (c) c.cagnotteCode = value;
+  }
+  if (!save()) {
+    cards = original;
+    return toast('Stockage plein : conversion annulée, anciens codes conservés.');
+  }
+  // Ne pas effacer le coffre historique : il peut encore servir à restaurer
+  // une ancienne sauvegarde et sa suppression serait irréversible.
+  render();
   const cur = cards.find(x => x.id === openedId);
   if (cur) refreshCodeRow(cur);
-  toast(lost ? `${ok} code${ok > 1 ? 's' : ''} converti${ok > 1 ? 's' : ''}, ${lost} à ressaisir.` : `${ok} code${ok > 1 ? 's' : ''} converti${ok > 1 ? 's' : ''} ✓`);
+  toast(`${updates.length} code(s) converti(s) ✓ Conserve ta sauvegarde de secours.`);
 }
 
 /* ---------- Sauvegarde (export / import) ---------- */
