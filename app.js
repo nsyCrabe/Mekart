@@ -1589,12 +1589,6 @@ async function importCards(file) {
     }
     const list = Array.isArray(data) ? data : (data && typeof data === 'object' ? data.cards : null);
     if (!Array.isArray(list)) throw new Error('format');
-    if (Array.isArray(data.colors)) {
-      data.colors.forEach(c => {
-        if (c && isHex(c.hex) && savedColors.length < 36 && !savedColors.some(x => x.hex === c.hex.toLowerCase())) savedColors.push({ hex: c.hex.toLowerCase(), name: String(c.name || '').slice(0, 24) });
-      });
-      persistSavedColors();
-    }
     const known = new Set(cards.map(c => c.id));
     const sig = c => `${norm(c.name)}|${c.code}`;
     const sigs = new Set(cards.filter(c => c.code).map(sig));
@@ -1608,6 +1602,21 @@ async function importCards(file) {
     cards.push(...added);
     ensureOrder();
     if (!save()) { cards = JSON.parse(backup); return toast('Stockage plein : import impossible.'); }
+    // Ne modifier les couleurs personnalisées qu'après confirmation de l'écriture des cartes.
+    if (data && Array.isArray(data.colors)) {
+      const previousColors = JSON.stringify(savedColors);
+      try {
+        data.colors.forEach(c => {
+          if (c && typeof c.hex === 'string' && isHex(c.hex) && savedColors.length < 36 &&
+              !savedColors.some(x => x.hex === c.hex.toLowerCase())) {
+            savedColors.push({ hex: c.hex.toLowerCase(), name: String(c.name || '').slice(0, 24) });
+          }
+        });
+        persistSavedColors();
+      } catch {
+        savedColors = JSON.parse(previousColors);
+      }
+    }
     render();
     toast(added.length ? `${added.length} carte${added.length > 1 ? 's' : ''} importée${added.length > 1 ? 's' : ''} ✓` : 'Aucune nouvelle carte dans ce fichier.');
   } catch { toast('Fichier de sauvegarde invalide.'); }
