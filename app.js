@@ -1552,9 +1552,41 @@ function exportCards() {
   updateBackupInfo();
   toast('Sauvegarde téléchargée ✓');
 }
+async function exportEncryptedCards() {
+  if (!cards.length) return toast('Aucune carte à exporter.');
+  if (!window.CardsCrypto || !crypto?.subtle) return toast('Chiffrement indisponible sur cet appareil.');
+  const phrase = prompt('Choisis une phrase secrète de 12 caractères minimum. Sans elle, la sauvegarde sera irrécupérable :');
+  if (phrase === null) return;
+  if (phrase.length < 12) return toast('Phrase secrète trop courte (12 caractères minimum).');
+  const confirmation = prompt('Confirme exactement la phrase secrète :');
+  if (confirmation === null) return;
+  if (phrase !== confirmation) return toast('Les phrases secrètes ne correspondent pas.');
+  try {
+    const payload = { app: 'mes-cartes', version: 5, exportedAt: new Date().toISOString(), cards, colors: savedColors };
+    const encrypted = await window.CardsCrypto.encrypt(JSON.stringify(payload), phrase);
+    const blob = new Blob([JSON.stringify({ app: 'mes-cartes-encrypted', encrypted })], { type: 'application/json' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: `mes-cartes-chiffre-${new Date().toISOString().slice(0, 10)}.json` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    try { localStorage.setItem(BACKUP_KEY, String(Date.now())); } catch {}
+    updateBackupInfo();
+    toast('Sauvegarde chiffrée téléchargée ✓ Garde ta phrase secrète.');
+  } catch { toast('Impossible de créer la sauvegarde chiffrée.'); }
+}
 async function importCards(file) {
   try {
-    const data = JSON.parse(await file.text());
+    if (file.size > 25 * 1024 * 1024) throw new Error('file too large');
+    let data = JSON.parse(await file.text());
+    if (data && data.app === 'mes-cartes-encrypted') {
+      if (!window.CardsCrypto) throw new Error('crypto unavailable');
+      const phrase = prompt('Phrase secrète de cette sauvegarde chiffrée :');
+      if (phrase === null) return;
+      try {
+        data = JSON.parse(await window.CardsCrypto.decrypt(data.encrypted, phrase));
+      } catch {
+        return toast('Déchiffrement impossible : phrase secrète incorrecte ou fichier endommagé.');
+      }
+    }
     const list = Array.isArray(data) ? data : (data && typeof data === 'object' ? data.cards : null);
     if (!Array.isArray(list)) throw new Error('format');
     if (Array.isArray(data.colors)) {
@@ -1685,6 +1717,7 @@ $('menuButton').addEventListener('click', () => openLayer('menu'));
 $('closeMenu').addEventListener('click', closeLayer);
 $('menuBackdrop').addEventListener('click', closeLayer);
 $('exportButton').addEventListener('click', exportCards);
+$('encryptedExportButton').addEventListener('click', exportEncryptedCards);
 $('importButton').addEventListener('click', () => $('importInput').click());
 $('importInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await importCards(f); e.target.value = ''; });
 $('installButton').addEventListener('click', async () => {
