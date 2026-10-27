@@ -44,6 +44,8 @@ const TEMPLATES = [
 
 const THEME2_KEY = 'loyalty_theme_v3';
 const WP_KEY = 'loyalty_wallpaper_v1';
+const CARD_STYLE_KEY = 'loyalty_card_style_v1';
+let cardStyle = ['classic','glass','minimal'].includes(localStorage.getItem(CARD_STYLE_KEY)) ? localStorage.getItem(CARD_STYLE_KEY) : 'glass';
 const BASES = { light: { bg: '#f3f6fc', surface: '#ffffff' }, dark: { bg: '#0b1220', surface: '#162036' } };
 const DEFAULT_THEME = { mode: 'auto', accent: '#3b6ef0', accent2: null, bg: null, surface: null, text: null, halo: true, wpBlur: 0, wpVeil: 35 };
 const ACCENTS = ['#3b6ef0', '#7c4dff', '#e0407f', '#ee5a3c', '#f59e0b', '#1f9254', '#0a8fa8', '#64748b'];
@@ -477,7 +479,43 @@ function colorsPanel() {
     el('div', { class: 'theme-preview-action', text: 'Exemple de bouton' }));
   box.append(preview);
 
-  const section = el('div', { class: 'theme-section-title' }, el('strong', { text: '2. Couleurs' }),
+  const presetTitle = el('div', { class: 'theme-section-title' }, el('strong', { text: '2. Thèmes prêts à utiliser' }),
+    el('span', { text: 'Un clic applique une palette complète. Tu peux ensuite ajuster chaque couleur.' }));
+  const presets = [
+    { name: 'Original', mode: 'auto', accent: '#3b6ef0', bg: null, surface: null, text: null, accent2: null },
+    { name: 'AMOLED', mode: 'dark', accent: '#8b9cff', bg: '#000000', surface: '#141414', text: null, accent2: null },
+    { name: 'Bleu nuit', mode: 'dark', accent: '#60a5fa', bg: '#0b1220', surface: '#162036', text: null, accent2: null },
+    { name: 'Violet', mode: 'dark', accent: '#a78bfa', bg: '#170f2c', surface: '#261b42', text: null, accent2: null },
+    { name: 'Pastel', mode: 'light', accent: '#9c5bcb', bg: '#f8f1ff', surface: '#ffffff', text: null, accent2: null },
+    { name: 'Minimaliste', mode: 'light', accent: '#334155', bg: '#f5f5f5', surface: '#ffffff', text: null, accent2: null }
+  ];
+  const presetGrid = el('div', { class: 'theme-preset-grid', role: 'group', 'aria-label': 'Thèmes prédéfinis' });
+  presets.forEach(p => {
+    const btn = el('button', { type: 'button', class: 'theme-preset', 'aria-label': 'Appliquer le thème ' + p.name });
+    const swatches = el('span', { class: 'theme-preset-swatches' });
+    [p.bg || '#f3f6fc', p.surface || '#ffffff', p.accent].forEach(hex => {
+      const dot = el('i'); dot.style.backgroundColor = hex; swatches.append(dot);
+    });
+    btn.append(swatches, el('strong', { text: p.name }));
+    btn.addEventListener('click', () => { setThemeKey({ mode: p.mode, accent: p.accent, bg: p.bg, surface: p.surface, text: p.text, accent2: p.accent2 }, true); toast('Thème ' + p.name + ' appliqué'); });
+    presetGrid.append(btn);
+  });
+  box.append(presetTitle, presetGrid);
+
+  const cardTitle = el('div', { class: 'theme-section-title' }, el('strong', { text: '3. Style des cartes' }),
+    el('span', { text: 'Change uniquement le rendu visuel. Tes cartes, codes et soldes ne sont pas modifiés.' }));
+  const cardStyles = el('div', { class: 'theme-card-styles', role: 'group', 'aria-label': 'Style des cartes' });
+  [['classic', 'Classique'], ['glass', 'Élégant'], ['minimal', 'Épuré']].forEach(([id, label]) => {
+    const btn = el('button', { type: 'button', class: 'theme-card-style' + (cardStyle === id ? ' selected' : ''),
+      'aria-pressed': cardStyle === id ? 'true' : 'false' }, el('span', { class: 'theme-card-style-sample ' + id }), el('strong', { text: label }));
+    btn.addEventListener('click', () => {
+      cardStyle = id; localStorage.setItem(CARD_STYLE_KEY, id); render(); renderThemes();
+    });
+    cardStyles.append(btn);
+  });
+  box.append(cardTitle, cardStyles);
+
+  const section = el('div', { class: 'theme-section-title' }, el('strong', { text: '4. Couleurs personnalisées' }),
     el('span', { text: 'Sélectionne une zone, puis choisis sa couleur. Les options avancées sont facultatives.' }));
   box.append(section);
   const tgt = TARGETS.find(t => t.key === themeTarget && (!t.adv || themeAdv)) || TARGETS[0];
@@ -753,7 +791,7 @@ function buildCard(c, i = 0, preview = false) {
   const cat = catById(c.category);
   const spent = isSpent(c);
   const soon = isSoon(c);
-  const b = el(preview ? 'div' : 'button', { class: `loyalty-card${isDead(c) ? ' empty' : ''}${preview ? ' preview' : ''}` });
+  const b = el(preview ? 'div' : 'button', { class: `loyalty-card card-style-${cardStyle}${isDead(c) ? ' empty' : ''}${preview ? ' preview' : ''}` });
   if (preview) b.setAttribute('aria-hidden', 'true');
   else {
     b.setAttribute('type', 'button');
@@ -1761,7 +1799,7 @@ $('wpInput').addEventListener('change', async e => {
   } catch { toast('Image illisible ou stockage plein.'); }
 });
 $('themeButton').addEventListener('click', () => {
-  themeSnap = { theme: { ...theme }, wallpaper };
+  themeSnap = { theme: { ...theme }, wallpaper, cardStyle };
   themeTab = 'colors'; themeTarget = 'accent'; themeAdv = false;
   renderThemes();
   openLayer('theme');
@@ -1770,6 +1808,9 @@ $('themeDone').addEventListener('click', closeLayer);
 $('themeCancel').addEventListener('click', () => {
   if (themeSnap) {
     theme = { ...themeSnap.theme };
+    cardStyle = themeSnap.cardStyle || 'glass';
+    localStorage.setItem(CARD_STYLE_KEY, cardStyle);
+    render();
     wallpaper = themeSnap.wallpaper;
     try { if (wallpaper) localStorage.setItem(WP_KEY, wallpaper); else localStorage.removeItem(WP_KEY); } catch {}
     persistTheme();
@@ -1779,6 +1820,10 @@ $('themeCancel').addEventListener('click', () => {
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (theme.mode === 'auto') applyTheme(); });
 
+$('menuAppearanceButton').addEventListener('click', () => {
+  closeLayer();
+  $('themeButton').click();
+});
 $('menuButton').addEventListener('click', () => openLayer('menu'));
 $('closeMenu').addEventListener('click', closeLayer);
 $('menuBackdrop').addEventListener('click', closeLayer);
