@@ -594,37 +594,3 @@ body[data-mode="dark"]{color-scheme:dark}
 .tab.active span{background:color-mix(in srgb,var(--accent) 13%,var(--surface));color:var(--text);border:1px solid var(--accent)}
 .theme-settings .tchip.active{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 12%,transparent)}
 .chip:focus-visible,.tab:focus-visible,.seg:focus-visible,.tchip:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-
-/* Affichage portefeuille empilé, chaque carte reste accessible au toucher */
-.cards-grid.stack{display:flex;flex-direction:column;gap:0;align-items:stretch;padding:12px 4px 26px;isolation:isolate}
-.cards-grid.stack .loyalty-card{width:100%;min-height:150px;flex:0 0 auto;transform-origin:center top;animation:stackReveal .32s ease both}
-.cards-grid.stack .loyalty-card + .loyalty-card{margin-top:-55px}
-.cards-grid.stack .loyalty-card:nth-child(odd){transform:rotate(-.4deg)}
-.cards-grid.stack .loyalty-card:nth-child(even){transform:rotate(.4deg)}
-.cards-grid.stack .loyalty-card:hover,.cards-grid.stack .loyalty-card:focus-visible{transform:translateY(-8px) scale(1.015);z-index:2;box-shadow:0 16px 35px #0006}
-.cards-grid.stack .loyalty-card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-.cards-grid.stack.reordering{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.cards-grid.stack.reordering .loyalty-card{margin:0;transform:none}
-
-/* Densité personnalisable, indépendante du contenu enregistré */
-.card-size-control{display:inline-flex;align-items:center;gap:5px;min-height:38px;padding:0 9px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);font-size:.78rem;font-weight:750}
-.card-size-control select{max-width:87px;min-height:34px;border:0;outline-offset:2px;background:transparent;color:var(--text);font:inherit}
-.cards-grid[data-size="compact"] .loyalty-card{min-height:120px;padding:10px}
-.cards-grid[data-size="compact"] .card-logo{width:42px;height:42px}
-.cards-grid[data-size="compact"] .card-name{font-size:.93rem}
-.cards-grid[data-size="large"] .loyalty-card{min-height:205px;padding:19px}
-.cards-grid[data-size="large"] .card-logo{width:62px;height:62px}
-.cards-grid[data-size="large"] .card-name{font-size:1.13rem}
-.cards-grid.list[data-size="compact"] .loyalty-card{min-height:68px}
-.cards-grid.list[data-size="large"] .loyalty-card{min-height:108px}
-.cards-grid.stack[data-size="compact"] .loyalty-card{min-height:130px}
-.cards-grid.stack[data-size="compact"] .loyalty-card + .loyalty-card{margin-top:-42px}
-.cards-grid.stack[data-size="large"] .loyalty-card{min-height:205px}
-.cards-grid.stack[data-size="large"] .loyalty-card + .loyalty-card{margin-top:-68px}
-@keyframes stackReveal{from{opacity:0;translate:0 16px}to{opacity:1;translate:0 0}}
-/* Transitions souples pour l'ouverture des panneaux et les interactions */
-.detail-panel:not([hidden]){animation:detailEnter .28s cubic-bezier(.2,.8,.2,1)}
-@keyframes detailEnter{from{opacity:.65;transform:translateY(22px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-.loyalty-card:not(.dragging){transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,filter .22s ease}
-@media(max-width:420px){.card-size-control span{display:none}.card-size-control{padding:0 5px}.card-size-control select{max-width:80px}.sort-row{gap:5px}}
-@media(prefers-reduced-motion:reduce){.cards-grid.stack .loyalty-card,.detail-panel:not([hidden]){animation:none}.loyalty-card:not(.dragging){transition:none}}
