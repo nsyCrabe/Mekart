@@ -10,7 +10,8 @@ test('encrypted export and import are wired to the crypto module', () => {
   assert.match(html, /id="exportButton"/);
   assert.doesNotMatch(html, /id="encryptedExportButton"/);
   assert.match(app, /\$\('exportButton'\)\.addEventListener\('click', exportEncryptedCards\)/);
-  assert.doesNotMatch(app, /function exportCards\(\)/);
+  assert.doesNotMatch(app, /\bexportCards\b/);
+  assert.match(app, /\$\('backupNow'\)\.addEventListener\('click', exportEncryptedCards\)/);
   assert.match(html, /src="crypto-vault\.js"/);
   assert.match(app, /window\.CardsCrypto\.encrypt\(/);
   assert.match(app, /window\.CardsCrypto\.decrypt\(/);
