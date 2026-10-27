@@ -103,3 +103,20 @@ test('does not monkeypatch Storage.prototype.setItem', () => {
   assert.doesNotMatch(source, /Storage\.prototype\.setItem\s*=/);
   assert.match(source, /window\.mirrorCardsBackup\s*=/);
 });
+
+test('IndexedDB failures do not alter the local card storage', async () => {
+  const values = new Map([['loyalty_cards_v1', one]]);
+  class Storage {
+    getItem(key) { return values.get(key) ?? null; }
+    setItem(key, value) { values.set(key, String(value)); }
+  }
+  const localStorage = new Storage();
+  const window = { indexedDB: { open() {
+    const request = {};
+    queueMicrotask(() => { request.error = new Error('Database unavailable'); request.onerror?.(); });
+    return request;
+  } } };
+  vm.runInNewContext(source, { window, indexedDB: window.indexedDB, localStorage, Storage, queueMicrotask, Date });
+  await assert.rejects(window.mirrorCardsBackup(two));
+  assert.equal(localStorage.getItem('loyalty_cards_v1'), one);
+});
