@@ -1589,11 +1589,19 @@ async function importCards(file) {
     }
     const list = Array.isArray(data) ? data : (data && typeof data === 'object' ? data.cards : null);
     if (!Array.isArray(list)) throw new Error('format');
+    // Les identifiants absents ou dupliqués dans un même fichier doivent
+    // être régénérés pour ne jamais introduire deux cartes avec le même id.
+    const seenImportIds = new Set();
     const known = new Set(cards.map(c => c.id));
     const sig = c => `${norm(c.name)}|${c.code}`;
     const sigs = new Set(cards.filter(c => c.code).map(sig));
     const added = list.filter(c => {
-      if (!c || typeof c.name !== 'string' || !c.name.trim() || (typeof c.id === 'string' && known.has(c.id))) return false;
+      if (!c || typeof c.name !== 'string' || !c.name.trim()) return false;
+      if (typeof c.id === 'string' && c.id && known.has(c.id)) return false;
+      if (typeof c.id === 'string' && c.id) {
+        if (seenImportIds.has(c.id)) return false;
+        seenImportIds.add(c.id);
+      }
       if (c.code) { const k = sig(c); if (sigs.has(k)) return false; sigs.add(k); }   // même nom + même numéro = doublon
       return true;
     })
