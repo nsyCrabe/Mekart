@@ -1,7 +1,7 @@
 /* Mes cartes — cache PWA versionné. Aucune donnée utilisateur n'est effacée ici. */
-const VERSION = 'v17';
+const VERSION = 'v18';
 const CACHE = `mes-cartes-${VERSION}`;
-const CORE = ['./', 'index.html', 'style.css', 'app.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
+const CORE = ['./', 'index.html', 'style.css', 'app.js', 'storage-backup.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 const CDN = [
   'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js',
   'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js',
