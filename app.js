@@ -262,7 +262,6 @@ function syncThemeColor(color) {
     $('themeColorMeta').setAttribute('content', bg);
     // Le fond racine colore aussi la zone système derrière la barre de navigation Android.
     document.documentElement.style.backgroundColor = bg;
-    document.body.style.backgroundColor = bg;
   }
 }
 function setThemeKey(patch, rerender = false) {
