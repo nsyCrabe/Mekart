@@ -576,3 +576,21 @@ body[data-mode="dark"]{color-scheme:dark}
 .loyalty-card.card-style-minimal .card-balance,.loyalty-card.card-style-minimal .card-fav{color:var(--text)}
 .loyalty-card.card-style-minimal .card-name{color:var(--text)}
 @media(prefers-reduced-motion:reduce){.loyalty-card{transition:none}}
+
+/* Sélections épurées : fond neutre + contour accentué, partout dans l'interface */
+.chip.active,
+.tab.active,
+.seg.active,
+.theme-mode .seg.active,
+.theme-settings .tchip.active,
+.theme-card-style.selected{
+  background:var(--surface);
+  color:var(--text);
+  border:2px solid var(--accent);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 12%,transparent);
+}
+.chip.active{padding:0 13px}
+.tab.active,.seg.active{box-shadow:inset 0 0 0 0 transparent}
+.tab.active span{background:color-mix(in srgb,var(--accent) 13%,var(--surface));color:var(--text);border:1px solid var(--accent)}
+.theme-settings .tchip.active{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 12%,transparent)}
+.chip:focus-visible,.tab:focus-visible,.seg:focus-visible,.tchip:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
