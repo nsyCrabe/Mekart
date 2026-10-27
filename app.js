@@ -1541,17 +1541,6 @@ function updateBackupInfo() {
   $('backupBanner').hidden = !show;
   if (show) $('backupText').textContent = age === null ? "Tes cartes ne sont pas sauvegardées." : `Dernière sauvegarde il y a ${age} jours.`;
 }
-function exportCards() {
-  if (!cards.length) return toast('Aucune carte à exporter.');
-  const payload = { app: 'mes-cartes', version: 5, exportedAt: new Date().toISOString(), cards, colors: savedColors };
-  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-  const a = el('a', { href: URL.createObjectURL(blob), download: `mes-cartes-${new Date().toISOString().slice(0, 10)}.json` });
-  document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  try { localStorage.setItem(BACKUP_KEY, String(Date.now())); localStorage.removeItem(SNOOZE_KEY); } catch {}
-  updateBackupInfo();
-  toast('Sauvegarde téléchargée ✓');
-}
 async function exportEncryptedCards() {
   if (!cards.length) return toast('Aucune carte à exporter.');
   if (!window.CardsCrypto || !crypto?.subtle) return toast('Chiffrement indisponible sur cet appareil.');
@@ -1736,8 +1725,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { 
 $('menuButton').addEventListener('click', () => openLayer('menu'));
 $('closeMenu').addEventListener('click', closeLayer);
 $('menuBackdrop').addEventListener('click', closeLayer);
-$('exportButton').addEventListener('click', exportCards);
-$('encryptedExportButton').addEventListener('click', exportEncryptedCards);
+$('exportButton').addEventListener('click', exportEncryptedCards);
 $('importButton').addEventListener('click', () => $('importInput').click());
 $('importInput').addEventListener('change', async e => { const f = e.target.files[0]; if (f) await importCards(f); e.target.value = ''; });
 $('installButton').addEventListener('click', async () => {
