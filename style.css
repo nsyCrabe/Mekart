@@ -345,7 +345,7 @@ body{padding-bottom:calc(112px + var(--safe-b))}
 body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(90% 55% at 15% -8%,var(--glow),transparent 70%),radial-gradient(70% 45% at 100% 0,color-mix(in srgb,var(--accent-2) 16%,transparent),transparent 70%);opacity:.9;transition:opacity .3s}
 body[data-mode="light"]::before{opacity:.75}
 body{background:var(--bg)}
-.topbar h1{background:linear-gradient(100deg,var(--text) 30%,var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;font-weight:850}
+.topbar h1{background:none;-webkit-background-clip:initial;background-clip:initial;-webkit-text-fill-color:currentColor;color:var(--text);font-weight:850}
 
 /* Boutons et puces : dégradé d'accent */
 .primary-button,.nav-add,.chip.active,.reorder-bar,.cagnotte-box .tool-button.ok{background:var(--accent)}
