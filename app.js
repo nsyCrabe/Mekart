@@ -8,7 +8,7 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
-const APP_VERSION = '5.6';
+const APP_VERSION = '5.7';
 const VIEW_KEY = 'loyalty_view_v1';
 const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
@@ -261,9 +261,9 @@ function syncThemeColor(color) {
   const bg = color || getComputedStyle(document.body).getPropertyValue('--bg').trim();
   if (bg) {
     $('themeColorMeta').setAttribute('content', bg);
-    // Le fond racine colore aussi la zone système derrière la barre de navigation Android.
-    document.documentElement.style.setProperty('--system-nav-bg', bg);
-    document.documentElement.style.backgroundColor = bg;
+    // La zone derrière le geste Android reste noire, quelle que soit la carte ou le thème.
+    document.documentElement.style.setProperty('--system-nav-bg', '#000000');
+    document.documentElement.style.backgroundColor = '#000000';
   }
 }
 function setThemeKey(patch, rerender = false) {
@@ -597,7 +597,7 @@ function setTab(t) {
   filter = { kind: 'all', value: '' };
   reorderMode = false;
   render();
-  window.scrollTo({ top: 0 });
+  document.querySelector('main').scrollTo({ top: 0 });
 }
 function render() {
   const grid = $('cardsGrid');
@@ -741,8 +741,12 @@ function onDragMove(e) {
 }
 function dragTick() {
   if (!drag) return;
-  if (drag.y < 90) window.scrollBy(0, -14);
-  else if (drag.y > innerHeight - 110) window.scrollBy(0, 14);
+  // L'en-tête reste visible : le défilement pendant le réordonnancement
+  // s'effectue donc dans la zone des cartes, et non plus dans la page.
+  const area = document.querySelector('main');
+  const bounds = area.getBoundingClientRect();
+  if (drag.y < bounds.top + 65) area.scrollBy(0, -14);
+  else if (drag.y > bounds.bottom - 85) area.scrollBy(0, 14);
   dragUpdate();
 }
 function dragUpdate() {
