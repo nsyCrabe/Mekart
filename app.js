@@ -261,9 +261,9 @@ function syncThemeColor(color) {
   const bg = color || getComputedStyle(document.body).getPropertyValue('--bg').trim();
   if (bg) {
     $('themeColorMeta').setAttribute('content', bg);
-    // La zone derrière le geste Android reste noire, quelle que soit la carte ou le thème.
-    document.documentElement.style.setProperty('--system-nav-bg', '#000000');
-    document.documentElement.style.backgroundColor = '#000000';
+    // Le fond racine colore aussi la zone système derrière la barre de navigation Android.
+    document.documentElement.style.setProperty('--system-nav-bg', bg);
+    document.documentElement.style.backgroundColor = bg;
   }
 }
 function setThemeKey(patch, rerender = false) {
