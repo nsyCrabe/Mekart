@@ -1,14 +1,14 @@
 /* ===== Mekart — style v3 ===== */
 
-/* ---------- Thème (entièrement personnalisable, valeurs posées par app.js) ---------- */
+/* ---------- Identité Mekart : crème, encre, corail et citron vert ---------- */
 :root{--danger:#d94b63;--radius:20px;--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px)}
-body{--bg:#f3f6fc;--surface:#fff;--text:#162036;--accent:#3b6ef0;--accent-2:#6a5cf0;--accent-dark:#6a5cf0;--on-accent:#fff;
+body{--bg:#f2f0e9;--surface:#fffaf0;--text:#171815;--accent:#ff6846;--accent-2:#c9f15c;--accent-dark:#d95235;--on-accent:#171815;--lime:#c9f15c;
 --soft:color-mix(in srgb,var(--surface) 90%,var(--accent) 10%);
 --line:color-mix(in srgb,var(--surface) 84%,var(--text) 16%);
 --muted:color-mix(in srgb,var(--text) 62%,var(--surface));
---glow:color-mix(in srgb,var(--accent) 24%,var(--bg));
---shadow:0 10px 28px -16px #1a2a5a66}
-body[data-mode="dark"]{color-scheme:dark;--shadow:0 12px 30px -14px #000d}
+--glow:color-mix(in srgb,var(--accent) 20%,var(--bg));
+--shadow:0 10px 28px -16px #4b403c55}
+body[data-mode="dark"]{color-scheme:dark;--bg:#10120f;--surface:#1b1e19;--text:#f2f0e9;--soft:color-mix(in srgb,var(--surface) 87%,var(--accent) 13%);--shadow:0 12px 30px -14px #000d}
 
 /* ---------- Base ---------- */
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -348,11 +348,12 @@ body{background:var(--bg)}
 .topbar h1{background:linear-gradient(100deg,var(--text) 30%,var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;font-weight:850}
 
 /* Boutons et puces : dégradé d'accent */
-.primary-button,.nav-add,.chip.active,.reorder-bar,.nav-tab.active .nav-count,.cagnotte-box .tool-button.ok{background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+.primary-button,.nav-add,.chip.active,.reorder-bar,.cagnotte-box .tool-button.ok{background:var(--accent)}
+.nav-tab.active .nav-count{background:var(--lime);color:#171815}
 .primary-button{box-shadow:0 10px 22px -10px var(--accent)}
 .chip.active{border-color:transparent;box-shadow:0 6px 16px -8px var(--accent)}
 .nav-add{box-shadow:0 12px 26px -8px var(--accent),0 0 0 4px var(--surface)}
-.progress span{background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+.progress span{background:var(--lime)}
 
 /* Surfaces : légère profondeur */
 .search-box,.sort-select,.chip:not(.active),.round-button,.menu-item,.balance-box,.cagnotte-box,.quick-guide{box-shadow:var(--shadow)}
@@ -386,7 +387,7 @@ body.dock-open .toasts{bottom:auto;top:calc(14px + var(--safe-t))}
 .dock-head .text-button{color:var(--muted)}
 .dock-tabs{margin:0;padding:3px}
 .dock-tabs .seg{min-height:36px;font-size:.84rem}
-.dock-done{min-height:40px;padding:0 16px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);font-weight:800}
+.dock-done{min-height:40px;padding:0 16px;border:0;border-radius:12px;background:var(--accent);color:var(--on-accent);font-weight:800}
 .theme-list{display:grid;gap:10px}
 .theme-panel{display:grid;gap:10px}
 .segmented.three{grid-template-columns:repeat(3,1fr);margin:0}
@@ -620,3 +621,11 @@ body[data-mode="dark"]{color-scheme:dark}
 .theme-category-back{align-self:start;padding:9px 4px;border:0;background:transparent;color:var(--accent);font-weight:750;text-align:left}
 .theme-category-title{margin:2px 4px 8px;font-size:1.12rem;color:var(--text)}
 @media(prefers-reduced-motion:reduce){.theme-category-item{transition:none}}
+
+/* L'apparence est désormais limitée à Clair / Sombre / Automatique.
+   Les couleurs des enseignes sont indépendantes de cette identité. */
+.theme-preview{box-shadow:0 12px 28px -24px #0008}
+.theme-preview-action{box-shadow:0 7px 16px -11px #ff6846}
+body[data-mode="dark"] .theme-preview{box-shadow:0 14px 30px -20px #000c}
+.theme-mode .seg.active{border-color:var(--accent);background:var(--surface);color:var(--text)}
+.nav-tab.active .nav-count{background:var(--lime);color:#171815}
