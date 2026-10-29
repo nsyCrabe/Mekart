@@ -1683,7 +1683,7 @@ async function exportEncryptedCards() {
     const payload = { app: 'mes-cartes', version: 5, exportedAt: new Date().toISOString(), cards, colors: savedColors };
     const encrypted = await window.CardsCrypto.encrypt(JSON.stringify(payload), phrase);
     const blob = new Blob([JSON.stringify({ app: 'mes-cartes-encrypted', encrypted })], { type: 'application/json' });
-    const a = el('a', { href: URL.createObjectURL(blob), download: `mes-cartes-chiffre-${new Date().toISOString().slice(0, 10)}.json` });
+    const a = el('a', { href: URL.createObjectURL(blob), download: `mekart-chiffre-${new Date().toISOString().slice(0, 10)}.json` });
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     try { localStorage.setItem(BACKUP_KEY, String(Date.now())); } catch {}
