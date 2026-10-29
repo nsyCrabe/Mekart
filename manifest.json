@@ -1,7 +1,7 @@
 {
   "id": "./index.html",
-  "name": "Mes Cartes de Fidélité",
-  "short_name": "Mes cartes",
+  "name": "Mekart",
+  "short_name": "Mekart",
   "description": "Toutes tes cartes de fidélité au même endroit, même hors ligne.",
   "lang": "fr",
   "dir": "ltr",
