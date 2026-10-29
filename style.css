@@ -507,11 +507,11 @@ input,select,textarea{max-width:100%}
 
 /* Android PWA : teinte du fond dans la zone du geste de navigation.
    Le navigateur conserve le contrôle de la barre système elle-même. */
-html{background-color:var(--system-nav-bg,#f3f6fc);color-scheme:normal}
+html{background-color:#000;--system-nav-bg:#000;color-scheme:normal}
 body{min-height:100dvh}
 body[data-mode="dark"]{color-scheme:dark}
 .bottom-nav{isolation:isolate}
-.bottom-nav::before{content:"";position:absolute;left:50%;bottom:0;width:100vw;height:max(env(safe-area-inset-bottom,0px),12px);transform:translateX(-50%);background:var(--system-nav-bg,var(--bg));z-index:-1;pointer-events:none}
+.bottom-nav::before{content:"";position:absolute;left:50%;bottom:0;width:100vw;height:max(env(safe-area-inset-bottom,0px),12px);transform:translateX(-50%);background:#000;z-index:-1;pointer-events:none}
 
 /* Paramètres de thèmes : lisibilité, hiérarchie et aperçu */
 .theme-settings{gap:14px;color:var(--text)}
@@ -672,3 +672,39 @@ body[data-mode="dark"] .theme-preview{box-shadow:0 14px 30px -20px #000c}
   border-radius:99px;
   background:var(--lime);
 }
+
+/* Défilement : seule la liste des cartes bouge, jamais l'en-tête.
+   Cela supprime le grand vide scrollable créé par le padding du body
+   tout en laissant accessibles les cartes sur les petits écrans. */
+html{
+  overflow:hidden;
+  overscroll-behavior-y:none;
+  background-color:#000;
+}
+body{
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+  height:100dvh;
+  min-height:0;
+  padding-bottom:0;
+  overflow:hidden;
+  overscroll-behavior-y:none;
+}
+.topbar{
+  width:100%;
+  flex:0 0 auto;
+}
+main{
+  width:100%;
+  flex:1 1 auto;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:calc(112px + var(--safe-b));
+}
+body.no-scroll main{overflow-y:hidden}
+body.dock-open{padding-bottom:0}
+body.dock-open main{padding-bottom:calc(min(58dvh,520px) + 16px + var(--safe-b))}
