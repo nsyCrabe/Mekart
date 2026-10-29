@@ -507,11 +507,11 @@ input,select,textarea{max-width:100%}
 
 /* Android PWA : teinte du fond dans la zone du geste de navigation.
    Le navigateur conserve le contrôle de la barre système elle-même. */
-html{background-color:#000;--system-nav-bg:#000;color-scheme:normal}
+html{background-color:var(--system-nav-bg,#f3f6fc);color-scheme:normal}
 body{min-height:100dvh}
 body[data-mode="dark"]{color-scheme:dark}
 .bottom-nav{isolation:isolate}
-.bottom-nav::before{content:"";position:absolute;left:50%;bottom:0;width:100vw;height:max(env(safe-area-inset-bottom,0px),12px);transform:translateX(-50%);background:#000;z-index:-1;pointer-events:none}
+.bottom-nav::before{content:"";position:absolute;left:50%;bottom:0;width:100vw;height:max(env(safe-area-inset-bottom,0px),12px);transform:translateX(-50%);background:var(--system-nav-bg,var(--bg));z-index:-1;pointer-events:none}
 
 /* Paramètres de thèmes : lisibilité, hiérarchie et aperçu */
 .theme-settings{gap:14px;color:var(--text)}
@@ -679,7 +679,6 @@ body[data-mode="dark"] .theme-preview{box-shadow:0 14px 30px -20px #000c}
 html{
   overflow:hidden;
   overscroll-behavior-y:none;
-  background-color:#000;
 }
 body{
   display:flex;
