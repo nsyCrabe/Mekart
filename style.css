@@ -630,17 +630,6 @@ body[data-mode="dark"] .theme-preview{box-shadow:0 14px 30px -20px #000c}
 
 /* Mekart : donner au vert citron un vrai rôle dans l'interface,
    tout en conservant le corail pour les boutons d'action. */
-.topbar h1::after{
-  content:"";
-  display:inline-block;
-  width:11px;
-  height:11px;
-  margin-left:10px;
-  vertical-align:middle;
-  background:var(--lime);
-  border:2px solid var(--text);
-  border-radius:50%;
-}
 .chip.active{
   background:var(--lime);
   border:2px solid #171815;
