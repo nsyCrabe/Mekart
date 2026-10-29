@@ -529,7 +529,6 @@ body[data-mode="dark"]{color-scheme:dark}
 .theme-preview-card{display:grid;gap:5px;padding:14px;border-radius:13px;background:var(--preview-surface);color:var(--preview-text);border:1px solid color-mix(in srgb,var(--preview-text) 16%,var(--preview-surface))}
 .theme-preview-card strong{font-size:.9rem}
 .theme-preview-card span{font-size:.78rem;line-height:1.4}
-.theme-preview-action{justify-self:start;padding:9px 14px;border-radius:11px;background:var(--preview-accent);color:var(--preview-on-accent);font-size:.8rem;font-weight:750}
 .theme-settings .t-meta{align-items:flex-start;flex-wrap:wrap}
 .theme-settings .t-meta span{flex:1;min-width:150px;color:var(--text);line-height:1.5}
 .theme-settings .t-meta button{white-space:normal;height:auto;min-height:38px}
@@ -625,7 +624,62 @@ body[data-mode="dark"]{color-scheme:dark}
 /* L'apparence est désormais limitée à Clair / Sombre / Automatique.
    Les couleurs des enseignes sont indépendantes de cette identité. */
 .theme-preview{box-shadow:0 12px 28px -24px #0008}
-.theme-preview-action{box-shadow:0 7px 16px -11px #ff6846}
 body[data-mode="dark"] .theme-preview{box-shadow:0 14px 30px -20px #000c}
 .theme-mode .seg.active{border-color:var(--accent);background:var(--surface);color:var(--text)}
 .nav-tab.active .nav-count{background:var(--lime);color:#171815}
+
+/* Mekart : donner au vert citron un vrai rôle dans l'interface,
+   tout en conservant le corail pour les boutons d'action. */
+.topbar h1::after{
+  content:"";
+  display:inline-block;
+  width:11px;
+  height:11px;
+  margin-left:10px;
+  vertical-align:middle;
+  background:var(--lime);
+  border:2px solid var(--text);
+  border-radius:50%;
+}
+.chip.active{
+  background:var(--lime);
+  border:2px solid #171815;
+  color:#171815;
+  box-shadow:0 5px 14px -9px #718c22;
+}
+.nav-tab.active{
+  background:color-mix(in srgb,var(--lime) 23%,var(--surface));
+  color:var(--text);
+}
+.nav-tab.active .nav-ic{
+  display:grid;
+  place-items:center;
+  padding:5px;
+  border-radius:11px;
+  background:var(--lime);
+  color:#171815;
+}
+.nav-tab.active .nav-count{
+  background:var(--accent);
+  color:#171815;
+  border:1px solid var(--surface);
+}
+.quick-guide>span{
+  background:var(--lime);
+  color:#171815;
+}
+.theme-mode .seg.active{
+  background:var(--lime);
+  color:#171815;
+  border:2px solid #171815;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--lime) 18%,transparent);
+}
+.theme-preview-card::before{
+  content:"";
+  display:block;
+  width:52px;
+  height:5px;
+  margin-bottom:2px;
+  border-radius:99px;
+  background:var(--lime);
+}
