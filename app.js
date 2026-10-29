@@ -1,5 +1,5 @@
 'use strict';
-/* ===== Mes cartes — app.js v3 ===== */
+/* ===== Mekart — app.js v3 ===== */
 
 /* Mêmes clés qu'avant : tes cartes existantes sont conservées */
 const CARDS_KEY = 'loyalty_cards_v1';
@@ -471,7 +471,7 @@ function colorsPanel() {
   preview.style.setProperty('--preview-accent', c.accent);
   preview.style.setProperty('--preview-on-accent', isLight(c.accent) ? '#101114' : '#fff');
   preview.append(el('div', { class: 'theme-preview-head' },
-    el('strong', { text: 'Aperçu de Mes Cartes' }),
+    el('strong', { text: 'Aperçu de Mekart' }),
     el('span', { text: c.dark ? 'Sombre' : 'Clair' })),
     el('div', { class: 'theme-preview-card' },
       el('strong', { text: 'Ma carte de fidélité' }),
@@ -1518,8 +1518,8 @@ async function bioEnable() {
   try {
     const cred = await navigator.credentials.create({ publicKey: {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: 'Mes cartes' },
-      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'mes-cartes', displayName: 'Mes cartes' },
+      rp: { name: 'Mekart' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'mekart', displayName: 'Mekart' },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
       authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
       timeout: 60000
