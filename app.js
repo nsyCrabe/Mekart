@@ -8,7 +8,7 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
-const APP_VERSION = '5.4';
+const APP_VERSION = '5.5';
 const VIEW_KEY = 'loyalty_view_v1';
 const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
@@ -46,8 +46,12 @@ const THEME2_KEY = 'loyalty_theme_v3';
 const WP_KEY = 'loyalty_wallpaper_v1';
 const CARD_STYLE_KEY = 'loyalty_card_style_v1';
 let cardStyle = ['classic','glass','minimal'].includes(localStorage.getItem(CARD_STYLE_KEY)) ? localStorage.getItem(CARD_STYLE_KEY) : 'glass';
-const BASES = { light: { bg: '#f3f6fc', surface: '#ffffff' }, dark: { bg: '#0b1220', surface: '#162036' } };
-const DEFAULT_THEME = { mode: 'auto', accent: '#3b6ef0', accent2: null, bg: null, surface: null, text: null, halo: true, wpBlur: 0, wpVeil: 35 };
+/* Couleurs fixes communes au site vitrine et à l'application Mekart. */
+const MEKART_PALETTE = Object.freeze({
+  light: Object.freeze({ bg: '#f2f0e9', surface: '#fffaf0', text: '#171815', accent: '#ff6846', accent2: '#c9f15c' }),
+  dark: Object.freeze({ bg: '#10120f', surface: '#1b1e19', text: '#f2f0e9', accent: '#ff6846', accent2: '#c9f15c' })
+});
+const DEFAULT_THEME = { mode: 'auto' };
 const ACCENTS = ['#3b6ef0', '#7c4dff', '#e0407f', '#ee5a3c', '#f59e0b', '#1f9254', '#0a8fa8', '#64748b'];
 let theme = { ...DEFAULT_THEME };
 let wallpaper = null;
@@ -220,42 +224,37 @@ const mixHex = (a, b, t) => {
 };
 const isHex = v => /^#[0-9a-f]{6}$/i.test(v || '');
 function loadTheme() {
+  // Ne récupérer que le choix clair / sombre / automatique. Les anciennes
+  // couleurs et fonds personnalisés restent stockés, mais ne sont plus appliqués.
   try {
-    const t = JSON.parse(localStorage.getItem(THEME2_KEY) || 'null');
-    theme = { ...DEFAULT_THEME, ...(t && typeof t === 'object' ? t : {}) };
+    const saved = JSON.parse(localStorage.getItem(THEME2_KEY) || 'null');
+    const mode = saved && saved.mode;
+    theme = { mode: ['auto', 'light', 'dark'].includes(mode) ? mode : 'auto' };
   } catch { theme = { ...DEFAULT_THEME }; }
-  ['accent', 'accent2', 'bg', 'surface', 'text'].forEach(k => { if (!isHex(theme[k])) theme[k] = DEFAULT_THEME[k]; });
-  if (!['auto', 'light', 'dark'].includes(theme.mode)) theme.mode = 'auto';
-  theme.halo = theme.halo !== false;
-  theme.wpBlur = Math.max(0, Math.min(24, Number(theme.wpBlur) || 0));
-  theme.wpVeil = Math.max(0, Math.min(90, Number.isFinite(Number(theme.wpVeil)) ? Number(theme.wpVeil) : 35));
-  try { wallpaper = localStorage.getItem(WP_KEY) || null; } catch { wallpaper = null; }
+  wallpaper = null;
 }
-function persistTheme() { try { localStorage.setItem(THEME2_KEY, JSON.stringify(theme)); } catch {} }
-/* Calcule les couleurs finales : ce que l'utilisateur a choisi, sinon des valeurs déduites */
+function persistTheme() {
+  try { localStorage.setItem(THEME2_KEY, JSON.stringify({ mode: theme.mode })); } catch {}
+}
 function computeTheme() {
-  const sysDark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
-  const wantDark = theme.mode === 'dark' || (theme.mode === 'auto' && sysDark);
-  const base = BASES[wantDark ? 'dark' : 'light'];
-  const bg = theme.bg || base.bg;
-  const dark = theme.bg ? lum(bg) < 0.25 : wantDark;
-  const surface = theme.surface || (theme.bg ? mixHex(bg, '#ffffff', dark ? 0.07 : 0.7) : base.surface);
-  const text = theme.text || (dark ? '#f4f7ff' : '#162036');
-  const accent = theme.accent;
-  const accent2 = theme.accent2 || (lum(accent) > 0.35 ? darken(accent, -40) : mixHex(accent, '#ffffff', 0.28));
-  return { bg, surface, text, accent, accent2, dark };
+  const sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const dark = theme.mode === 'dark' || (theme.mode === 'auto' && sysDark);
+  return { ...MEKART_PALETTE[dark ? 'dark' : 'light'], dark };
 }
 function applyTheme() {
   const c = computeTheme();
   const body = document.body, s = body.style;
-  [['--bg', c.bg], ['--surface', c.surface], ['--text', c.text], ['--accent', c.accent], ['--accent-2', c.accent2], ['--accent-dark', c.accent2],
-   ['--on-accent', isLight(c.accent) ? '#101114' : '#fff'], ['--wp-blur', theme.wpBlur + 'px'], ['--wp-veil', theme.wpVeil + '%']]
-    .forEach(([k, v]) => s.setProperty(k, v));
+  [
+    ['--bg', c.bg], ['--surface', c.surface], ['--text', c.text],
+    ['--accent', c.accent], ['--accent-2', c.accent2],
+    ['--accent-dark', '#d95235'], ['--on-accent', '#171815'],
+    ['--lime', '#c9f15c']
+  ].forEach(([key, val]) => s.setProperty(key, val));
   body.dataset.mode = c.dark ? 'dark' : 'light';
-  body.dataset.halo = theme.halo ? 'on' : 'off';
-  body.dataset.wp = wallpaper ? '1' : '0';
-  $('wpImg').style.backgroundImage = wallpaper ? `url("${wallpaper}")` : '';
-  $('wallpaper').hidden = !wallpaper;
+  body.dataset.halo = 'on';
+  body.dataset.wp = '0';
+  $('wpImg').style.backgroundImage = '';
+  $('wallpaper').hidden = true;
   syncThemeColor();
 }
 function syncThemeColor(color) {
@@ -443,210 +442,69 @@ function rangeRow(label, key, min, max, step, unit) {
 }
 function colorsPanel() {
   const box = el('div', { class: 'theme-panel theme-settings' });
-  const intro = el('div', { class: 'theme-intro' },
-    el('strong', { text: 'Personnalise ton application' }),
-    el('p', { text: 'Choisis d’abord l’apparence, puis les couleurs. Les changements sont visibles immédiatement. Annuler restaure tes réglages précédents.' }));
-  box.append(intro);
+  box.append(
+    el('div', { class: 'theme-intro' },
+      el('strong', { text: 'Le style Mekart, partout' }),
+      el('p', { text: 'Les couleurs crème, corail et citron vert du site sont désormais celles de l’application. Choisis uniquement l’apparence qui te plaît.' })),
+    el('div', { class: 'theme-section-title' },
+      el('strong', { text: 'Apparence' }),
+      el('span', { text: 'Automatique suit les réglages de ton téléphone.' }))
+  );
 
-  const modeTitle = el('div', { class: 'theme-section-title' }, el('strong', { text: '1. Apparence' }),
-    el('span', { text: 'Le mode clair utilise du texte foncé ; le mode sombre utilise du texte clair.' }));
-  const mode = el('div', { class: 'segmented three theme-mode', role: 'radiogroup', 'aria-label': 'Apparence de l’application' });
-  [['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].forEach(([v, l]) => {
-    const b = el('button', { type: 'button', class: `seg${theme.mode === v ? ' active' : ''}`, text: l,
-      'aria-pressed': theme.mode === v ? 'true' : 'false' });
-    b.addEventListener('click', () => {
-      // Un ancien texte blanc personnalisé ne doit pas rester blanc sur le mode clair.
-      // Les couleurs de fond personnalisées restent disponibles après le changement.
-      setThemeKey({ mode: v, text: null }, true);
+  const mode = el('div', { class: 'segmented three theme-mode', role: 'group', 'aria-label': 'Apparence de Mekart' });
+  [['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].forEach(([value, label]) => {
+    const button = el('button', {
+      type: 'button', class: `seg${theme.mode === value ? ' active' : ''}`,
+      text: label, 'aria-pressed': theme.mode === value ? 'true' : 'false'
     });
-    mode.append(b);
+    button.addEventListener('click', () => setThemeKey({ mode: value }, true));
+    mode.append(button);
   });
-  box.append(modeTitle, mode);
+  box.append(mode);
 
-  const c = computeTheme();
-  const preview = el('div', { class: 'theme-preview', 'aria-label': 'Aperçu du thème' });
-  preview.style.setProperty('--preview-bg', c.bg);
-  preview.style.setProperty('--preview-surface', c.surface);
-  preview.style.setProperty('--preview-text', c.text);
-  preview.style.setProperty('--preview-accent', c.accent);
-  preview.style.setProperty('--preview-on-accent', isLight(c.accent) ? '#101114' : '#fff');
-  preview.append(el('div', { class: 'theme-preview-head' },
-    el('strong', { text: 'Aperçu de Mekart' }),
-    el('span', { text: c.dark ? 'Sombre' : 'Clair' })),
+  const current = computeTheme();
+  const preview = el('div', { class: 'theme-preview', 'aria-label': 'Aperçu du thème Mekart' });
+  preview.style.setProperty('--preview-bg', current.bg);
+  preview.style.setProperty('--preview-surface', current.surface);
+  preview.style.setProperty('--preview-text', current.text);
+  preview.style.setProperty('--preview-accent', current.accent);
+  preview.style.setProperty('--preview-on-accent', '#171815');
+  preview.append(
+    el('div', { class: 'theme-preview-head' },
+      el('strong', { text: 'Mekart' }),
+      el('span', { text: current.dark ? 'Mode sombre' : 'Mode clair' })),
     el('div', { class: 'theme-preview-card' },
-      el('strong', { text: 'Ma carte de fidélité' }),
-      el('span', { text: 'Voici comment apparaissent les textes et les surfaces.' })),
-    el('div', { class: 'theme-preview-action', text: 'Exemple de bouton' }));
+      el('strong', { text: 'Toutes tes cartes, au même endroit' }),
+      el('span', { text: 'Des couleurs harmonisées avec mekart.fr, sans personnalisation nécessaire.' })),
+    el('div', { class: 'theme-preview-action', text: 'Exemple de bouton' })
+  );
   box.append(preview);
 
-  const presetTitle = el('div', { class: 'theme-section-title' }, el('strong', { text: '2. Thèmes prêts à utiliser' }),
-    el('span', { text: 'Un clic applique une palette complète. Tu peux ensuite ajuster chaque couleur.' }));
-  const presets = [
-    { name: 'Original', mode: 'auto', accent: '#3b6ef0', bg: null, surface: null, text: null, accent2: null },
-    { name: 'AMOLED', mode: 'dark', accent: '#8b9cff', bg: '#000000', surface: '#141414', text: null, accent2: null },
-    { name: 'Bleu nuit', mode: 'dark', accent: '#60a5fa', bg: '#0b1220', surface: '#162036', text: null, accent2: null },
-    { name: 'Violet', mode: 'dark', accent: '#a78bfa', bg: '#170f2c', surface: '#261b42', text: null, accent2: null },
-    { name: 'Pastel', mode: 'light', accent: '#9c5bcb', bg: '#f8f1ff', surface: '#ffffff', text: null, accent2: null },
-    { name: 'Minimaliste', mode: 'light', accent: '#334155', bg: '#f5f5f5', surface: '#ffffff', text: null, accent2: null }
-  ];
-  const presetGrid = el('div', { class: 'theme-preset-grid', role: 'group', 'aria-label': 'Thèmes prédéfinis' });
-  presets.forEach(p => {
-    const btn = el('button', { type: 'button', class: 'theme-preset', 'aria-label': 'Appliquer le thème ' + p.name });
-    const swatches = el('span', { class: 'theme-preset-swatches' });
-    [p.bg || '#f3f6fc', p.surface || '#ffffff', p.accent].forEach(hex => {
-      const dot = el('i'); dot.style.backgroundColor = hex; swatches.append(dot);
-    });
-    btn.append(swatches, el('strong', { text: p.name }));
-    btn.addEventListener('click', () => { setThemeKey({ mode: p.mode, accent: p.accent, bg: p.bg, surface: p.surface, text: p.text, accent2: p.accent2 }, true); toast('Thème ' + p.name + ' appliqué'); });
-    presetGrid.append(btn);
-  });
-  box.append(presetTitle, presetGrid);
-
-  const cardTitle = el('div', { class: 'theme-section-title' }, el('strong', { text: '3. Style des cartes' }),
-    el('span', { text: 'Change uniquement le rendu visuel. Tes cartes, codes et soldes ne sont pas modifiés.' }));
-  const cardStyles = el('div', { class: 'theme-card-styles', role: 'group', 'aria-label': 'Style des cartes' });
+  // Les couleurs propres aux enseignes restent inchangées et modifiables
+  // dans l'éditeur d'une carte. Seule la palette de l'interface est verrouillée.
+  const cardTitle = el('div', { class: 'theme-section-title' },
+    el('strong', { text: 'Présentation des cartes' }),
+    el('span', { text: 'Change uniquement la forme des cartes, jamais leurs couleurs ou leurs données.' }));
+  const cardStyles = el('div', { class: 'theme-card-styles', role: 'group', 'aria-label': 'Présentation des cartes' });
   [['classic', 'Classique'], ['glass', 'Élégant'], ['minimal', 'Épuré']].forEach(([id, label]) => {
-    const btn = el('button', { type: 'button', class: 'theme-card-style' + (cardStyle === id ? ' selected' : ''),
-      'aria-pressed': cardStyle === id ? 'true' : 'false' }, el('span', { class: 'theme-card-style-sample ' + id }), el('strong', { text: label }));
-    btn.addEventListener('click', () => {
-      cardStyle = id; localStorage.setItem(CARD_STYLE_KEY, id); render(); renderThemes();
+    const button = el('button', {
+      type: 'button', class: 'theme-card-style' + (cardStyle === id ? ' selected' : ''),
+      'aria-pressed': cardStyle === id ? 'true' : 'false'
+    }, el('span', { class: 'theme-card-style-sample ' + id }), el('strong', { text: label }));
+    button.addEventListener('click', () => {
+      cardStyle = id;
+      localStorage.setItem(CARD_STYLE_KEY, id);
+      render();
+      renderThemes();
     });
-    cardStyles.append(btn);
+    cardStyles.append(button);
   });
   box.append(cardTitle, cardStyles);
-
-  const section = el('div', { class: 'theme-section-title' }, el('strong', { text: '4. Couleurs personnalisées' }),
-    el('span', { text: 'Sélectionne une zone, puis choisis sa couleur. Les options avancées sont facultatives.' }));
-  box.append(section);
-  const tgt = TARGETS.find(t => t.key === themeTarget && (!t.adv || themeAdv)) || TARGETS[0];
-  const dots = {};
-  const chips = el('div', { class: 'tchips', role: 'group', 'aria-label': 'Zone à personnaliser' });
-  TARGETS.filter(t => !t.adv || themeAdv).forEach(t => {
-    const i = el('i');
-    dots[t.key] = i;
-    const b = el('button', { type: 'button', class: `tchip${t.key === tgt.key ? ' active' : ''}`,
-      'aria-pressed': t.key === tgt.key ? 'true' : 'false' }, i, t.label);
-    b.addEventListener('click', () => { themeTarget = t.key; flashZone(t.key); renderThemes(); });
-    chips.append(b);
-  });
-  const more = el('button', { type: 'button', class: 'tchip more', text: themeAdv ? 'Masquer les options avancées ▴' : 'Options avancées ▾',
-    'aria-expanded': themeAdv ? 'true' : 'false' });
-  more.addEventListener('click', () => {
-    themeAdv = !themeAdv;
-    if (!themeAdv && TARGETS.find(t => t.key === themeTarget)?.adv) themeTarget = 'accent';
-    renderThemes();
-  });
-  chips.append(more);
-  box.append(chips);
-
-  const desc = el('span');
-  const resetBtn = el('button', { type: 'button', class: 'chip small' });
-  const contrastHint = el('p', { class: 'theme-contrast-hint' });
-  const sync = () => {
-    const current = computeTheme();
-    TARGETS.forEach(t => { if (dots[t.key]) dots[t.key].style.setProperty('--c', current[t.key]); });
-    const isAuto = tgt.auto && theme[tgt.key] === null;
-    desc.textContent = tgt.desc + (isAuto ? ' · couleur automatique' : ' · couleur personnalisée');
-    resetBtn.textContent = tgt.auto ? 'Utiliser la couleur automatique' : 'Rétablir la couleur d’origine';
-    resetBtn.hidden = tgt.auto ? isAuto : theme.accent === DEFAULT_THEME.accent;
-    const difference = Math.abs(lum(current.text) - lum(current.surface));
-    contrastHint.textContent = tgt.key === 'text'
-      ? (difference < 0.35 ? '⚠️ Ce texte risque d’être difficile à lire sur les surfaces. Utilise « couleur automatique » pour retrouver un bon contraste.' : '✓ Le texte se distingue du fond des surfaces.')
-      : 'Astuce : les couleurs du texte sont calculées automatiquement, sauf si tu les personnalises dans les options avancées.';
-    const p = preview.style;
-    p.setProperty('--preview-bg', current.bg);
-    p.setProperty('--preview-surface', current.surface);
-    p.setProperty('--preview-text', current.text);
-    p.setProperty('--preview-accent', current.accent);
-    p.setProperty('--preview-on-accent', isLight(current.accent) ? '#101114' : '#fff');
-    preview.querySelector('.theme-preview-head span').textContent = current.dark ? 'Sombre' : 'Clair';
-  };
-  resetBtn.addEventListener('click', () => {
-    theme[tgt.key] = tgt.auto ? null : DEFAULT_THEME[tgt.key];
-    commitTheme();
-    renderThemes();
-  });
-  box.append(el('div', { class: 't-meta' }, desc, resetBtn));
-  const picker = buildPicker(computeTheme()[tgt.key], hexv => { theme[tgt.key] = hexv; commitTheme(); sync(); });
-  box.append(picker, contrastHint);
-
-  if (themeAdv) {
-    const halo = el('label', { class: 'check-row' }, el('input', { type: 'checkbox' }),
-      el('span', { text: 'Afficher un halo coloré en arrière-plan' }));
-    halo.firstChild.checked = theme.halo;
-    halo.firstChild.addEventListener('change', e => setThemeKey({ halo: e.target.checked }));
-    const reset = el('button', { type: 'button', class: 'secondary-button', text: 'Réinitialiser toutes les couleurs' });
-    reset.addEventListener('click', () => {
-      setThemeKey({ ...DEFAULT_THEME, mode: theme.mode, wpBlur: theme.wpBlur, wpVeil: theme.wpVeil }, true);
-      toast('Couleurs réinitialisées');
-    });
-    box.append(halo, reset);
-  }
-  box.append(el('div', { class: 'theme-android-note' },
-    el('strong', { text: 'Barre de navigation Android' }),
-    el('p', { text: 'Le fond derrière le trait de navigation dépend aussi de la couleur enregistrée lors de l’installation de la PWA. Il peut rester sombre même si tu changes le thème ici. Une réinstallation peut être nécessaire pour changer cette couleur système : sauvegarde tes cartes avant toute réinstallation.' })));
-  sync();
-  // Conserver les contrôles existants, mais n'afficher que la rubrique choisie.
-  // Les sections sont délimitées par leurs titres, sans toucher aux données.
-  let sectionGroup = 'app';
-  for (const node of [...box.children]) {
-    if (node === cardTitle) sectionGroup = 'cards';
-    else if (node === section) sectionGroup = 'colors';
-    const show = sectionGroup === themeTab;
-    node.hidden = !show;
-    if (!show) node.style.display = 'none';
-  }
-  return box;
-}
-function wallpaperPanel() {
-  const box = el('div', { class: 'theme-panel' });
-  box.append(el('p', { class: 'field-hint', text: wallpaper ? "Règle le flou et le voile en regardant ton app juste au-dessus." : "Choisis une image de ta galerie pour habiller l'app. Elle reste sur cet appareil." }));
-  const row = el('div', { class: 'btn-row' });
-  const pick = el('button', { type: 'button', class: 'primary-button', text: wallpaper ? "Changer l'image" : 'Choisir une image' });
-  pick.addEventListener('click', () => $('wpInput').click());
-  row.append(pick);
-  if (wallpaper) {
-    const rm = el('button', { type: 'button', class: 'secondary-button', text: 'Retirer' });
-    rm.addEventListener('click', () => { try { localStorage.removeItem(WP_KEY); } catch {} wallpaper = null; applyTheme(); renderThemes(); toast('Fond d’écran retiré'); });
-    row.append(rm);
-  }
-  box.append(row);
-  if (wallpaper) box.append(rangeRow('Flou', 'wpBlur', 0, 24, 1, ' px'), rangeRow('Voile (couleur du fond)', 'wpVeil', 0, 90, 5, ' %'));
   return box;
 }
 function renderThemes() {
-  const tabs = $('themeTabs');
-  const content = $('themeList');
-  tabs.replaceChildren();
-  content.replaceChildren();
-  const sections = [
-    ['app', "Thème de l'application", 'Mode clair ou sombre et palettes prédéfinies', 'palette'],
-    ['cards', 'Thème des cartes', 'Classique, Élégant ou Épuré', 'credit-card'],
-    ['colors', 'Couleurs personnalisées', 'Couleurs, contraste et options avancées', 'paintbrush'],
-    ['wallpaper', "Fond d'écran", 'Image, flou et voile', 'image']
-  ];
-  if (themeTab === 'home') {
-    const heading = el('div', { class: 'theme-category-intro' },
-      el('strong', { text: 'Personnalisation' }),
-      el('p', { text: 'Choisis ce que tu souhaites modifier.' }));
-    const menu = el('div', { class: 'theme-category-menu' });
-    sections.forEach(([id, label, desc]) => {
-      const btn = el('button', { type: 'button', class: 'theme-category-item' },
-        el('span', { class: 'theme-category-symbol', text: id === 'app' ? '◐' : id === 'cards' ? '▣' : id === 'colors' ? '◉' : '▧' }),
-        el('span', { class: 'theme-category-copy' },
-          el('strong', { text: label }), el('small', { text: desc })),
-        el('span', { class: 'theme-category-chevron', text: '›', 'aria-hidden': 'true' }));
-      btn.addEventListener('click', () => { themeTab = id; renderThemes(); });
-      menu.append(btn);
-    });
-    content.append(heading, menu);
-    return;
-  }
-  const current = sections.find(x => x[0] === themeTab) || sections[0];
-  const back = el('button', { type: 'button', class: 'theme-category-back', text: '‹ Toutes les catégories' });
-  back.addEventListener('click', () => { themeTab = 'home'; renderThemes(); });
-  content.append(back, el('h3', { class: 'theme-category-title', text: current[1] }),
-    themeTab === 'wallpaper' ? wallpaperPanel() : colorsPanel());
+  $('themeTabs').replaceChildren();
+  $('themeList').replaceChildren(colorsPanel());
 }
 function resizeWallpaper(file) {
   return new Promise((resolve, reject) => {
@@ -1834,7 +1692,7 @@ $('wpInput').addEventListener('change', async e => {
 });
 $('themeButton').addEventListener('click', () => {
   themeSnap = { theme: { ...theme }, wallpaper, cardStyle };
-  themeTab = 'home'; themeTarget = 'accent'; themeAdv = false;
+  themeTab = 'app';
   renderThemes();
   openLayer('theme');
 });
@@ -1861,9 +1719,7 @@ $('menuAppearanceButton').addEventListener('click', () => {
   stack.pop();
   hideLayer('menu');
   themeSnap = { theme: { ...theme }, wallpaper, cardStyle };
-  themeTab = 'home';
-  themeTarget = 'accent';
-  themeAdv = false;
+  themeTab = 'app';
   renderThemes();
   openLayer('theme', { replace: true });
 });
