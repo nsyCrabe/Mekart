@@ -8,7 +8,7 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
-const APP_VERSION = '5.5';
+const APP_VERSION = '5.6';
 const VIEW_KEY = 'loyalty_view_v1';
 const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
@@ -475,8 +475,7 @@ function colorsPanel() {
       el('span', { text: current.dark ? 'Mode sombre' : 'Mode clair' })),
     el('div', { class: 'theme-preview-card' },
       el('strong', { text: 'Toutes tes cartes, au même endroit' }),
-      el('span', { text: 'Des couleurs harmonisées avec mekart.fr, sans personnalisation nécessaire.' })),
-    el('div', { class: 'theme-preview-action', text: 'Exemple de bouton' })
+      el('span', { text: 'Des couleurs harmonisées avec mekart.fr, sans personnalisation nécessaire.' }))
   );
   box.append(preview);
 
