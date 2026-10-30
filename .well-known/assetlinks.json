@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "fr.mekart.app",
+      "sha256_cert_fingerprints": [
+        "D3:78:54:B7:A4:EF:08:DD:77:6E:F2:04:F5:DB:A6:33:0A:6B:1E:55:2C:9B:3B:9E:03:0F:44:8F:11:67:48:D5"
+      ]
+    }
+  }
+]
