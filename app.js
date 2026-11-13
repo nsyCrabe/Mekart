@@ -8,7 +8,7 @@ const GUIDE_KEY = 'loyalty_hide_guide';
 const SORT_KEY = 'loyalty_sort_v1';
 const TAB_KEY = 'loyalty_tab_v1';
 const VAULT_KEY = 'loyalty_vault_v1';
-const APP_VERSION = '5.7';
+const APP_VERSION = '6.0';
 const VIEW_KEY = 'loyalty_view_v1';
 const BIO_KEY = 'loyalty_bio_v1';
 const BACKUP_KEY = 'loyalty_last_backup';
@@ -45,11 +45,11 @@ const TEMPLATES = [
 const THEME2_KEY = 'loyalty_theme_v3';
 const WP_KEY = 'loyalty_wallpaper_v1';
 const CARD_STYLE_KEY = 'loyalty_card_style_v1';
-let cardStyle = ['classic','glass','minimal'].includes(localStorage.getItem(CARD_STYLE_KEY)) ? localStorage.getItem(CARD_STYLE_KEY) : 'glass';
+let cardStyle = ['classic','glass','minimal'].includes(localStorage.getItem(CARD_STYLE_KEY)) ? localStorage.getItem(CARD_STYLE_KEY) : 'minimal';
 /* Couleurs fixes communes au site vitrine et à l'application Mekart. */
 const MEKART_PALETTE = Object.freeze({
-  light: Object.freeze({ bg: '#f2f0e9', surface: '#fffaf0', text: '#171815', accent: '#ff6846', accent2: '#c9f15c' }),
-  dark: Object.freeze({ bg: '#10120f', surface: '#1b1e19', text: '#f2f0e9', accent: '#ff6846', accent2: '#c9f15c' })
+  light: Object.freeze({ bg: '#fafaf7', surface: '#ffffff', text: '#242923', accent: '#405c40', accent2: '#405c40' }),
+  dark: Object.freeze({ bg: '#171a17', surface: '#202420', text: '#edeee8', accent: '#b9cbb1', accent2: '#b9cbb1' })
 });
 const DEFAULT_THEME = { mode: 'auto' };
 const ACCENTS = ['#3b6ef0', '#7c4dff', '#e0407f', '#ee5a3c', '#f59e0b', '#1f9254', '#0a8fa8', '#64748b'];
@@ -203,7 +203,7 @@ function load() {
   loadSavedColors();
   sortMode = localStorage.getItem(SORT_KEY) || 'recent';
   if (!['recent', 'used', 'az', 'manual'].includes(sortMode)) sortMode = 'recent';
-  viewMode = localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid';
+  viewMode = localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list';
   ensureOrder();
   $('sortSelect').value = sortMode;
   $('quickGuide').hidden = localStorage.getItem(GUIDE_KEY) === '1';
@@ -247,11 +247,11 @@ function applyTheme() {
   [
     ['--bg', c.bg], ['--surface', c.surface], ['--text', c.text],
     ['--accent', c.accent], ['--accent-2', c.accent2],
-    ['--accent-dark', '#d95235'], ['--on-accent', '#171815'],
-    ['--lime', '#c9f15c']
+    ['--accent-dark', c.accent], ['--on-accent', c.dark ? '#1a2918' : '#ffffff'],
+    ['--lime', c.accent]
   ].forEach(([key, val]) => s.setProperty(key, val));
   body.dataset.mode = c.dark ? 'dark' : 'light';
-  body.dataset.halo = 'on';
+  body.dataset.halo = 'off';
   body.dataset.wp = '0';
   $('wpImg').style.backgroundImage = '';
   $('wallpaper').hidden = true;
@@ -444,8 +444,8 @@ function colorsPanel() {
   const box = el('div', { class: 'theme-panel theme-settings' });
   box.append(
     el('div', { class: 'theme-intro' },
-      el('strong', { text: 'Le style Mekart, partout' }),
-      el('p', { text: 'Les couleurs crème, corail et citron vert du site sont désormais celles de l’application. Choisis uniquement l’apparence qui te plaît.' })),
+      el('strong', { text: 'Apparence' }),
+      el('p', { text: 'Une interface simple. Choisis le mode qui te convient.' })),
     el('div', { class: 'theme-section-title' },
       el('strong', { text: 'Apparence' }),
       el('span', { text: 'Automatique suit les réglages de ton téléphone.' }))
@@ -483,9 +483,9 @@ function colorsPanel() {
   // dans l'éditeur d'une carte. Seule la palette de l'interface est verrouillée.
   const cardTitle = el('div', { class: 'theme-section-title' },
     el('strong', { text: 'Présentation des cartes' }),
-    el('span', { text: 'Change uniquement la forme des cartes, jamais leurs couleurs ou leurs données.' }));
+    el('span', { text: 'Un léger repère de couleur peut aider à reconnaître tes cartes.' }));
   const cardStyles = el('div', { class: 'theme-card-styles', role: 'group', 'aria-label': 'Présentation des cartes' });
-  [['classic', 'Classique'], ['glass', 'Élégant'], ['minimal', 'Épuré']].forEach(([id, label]) => {
+  [['minimal', 'Épuré'], ['classic', 'Repère de couleur']].forEach(([id, label]) => {
     const button = el('button', {
       type: 'button', class: 'theme-card-style' + (cardStyle === id ? ' selected' : ''),
       'aria-pressed': cardStyle === id ? 'true' : 'false'
@@ -584,7 +584,7 @@ function renderFilters(pool) {
   };
   add('all', '', 'Toutes');
   if (pool.some(c => c.fav)) add('fav', '', '★ Favorites');
-  CATEGORIES.filter(cat => pool.some(c => c.category === cat.id)).forEach(cat => add('cat', cat.id, `${cat.emoji} ${cat.name}`));
+  CATEGORIES.filter(cat => pool.some(c => c.category === cat.id)).forEach(cat => add('cat', cat.id, cat.name));
   const tags = new Map();
   pool.forEach(c => (c.tags || []).forEach(t => { const k = norm(t); if (!tags.has(k)) tags.set(k, t); }));
   [...tags].sort((a, b) => a[1].localeCompare(b[1], 'fr')).forEach(([k, t]) => add('tag', k, `#${t}`));
@@ -694,7 +694,7 @@ function buildCard(c, i = 0, preview = false) {
   b.style.setProperty('--card-color-dark', darken(color));
   b.style.setProperty('--card-fg', isLight(color) ? '#14181f' : '#fff');
   const logo = el('div', { class: 'card-logo' }); logo.append(logoNode(c));
-  const typeText = spent ? 'Épuisée' : isExpired(c) ? 'Expirée' : soon ? expiryText(c) : (cat ? `${cat.emoji} ${cat.name}` : typeLabel(c.codeType));
+  const typeText = spent ? 'Épuisée' : isExpired(c) ? 'Expirée' : soon ? expiryText(c) : (cat ? cat.name : typeLabel(c.codeType));
   b.append(
     el('div', { class: 'card-top' }, logo, (c.fav || c.balance != null) ? el('div', { class: 'card-badges' }, c.balance != null ? el('span', { class: 'card-balance', text: (kindOf(c) === 'loyalty' ? '💰 ' : '') + fmtMoney(c.balance) }) : null, c.fav ? el('span', { class: 'card-fav', text: '★' }) : null) : null),
     el('div', { class: 'card-text' }, el('p', { class: 'card-name', text: c.name }), el('p', { class: `card-type${soon ? ' warn' : ''}`, text: typeText }))
@@ -1090,7 +1090,7 @@ function renderDetailMeta(c) {
   const box = $('detailMeta');
   box.replaceChildren();
   const cat = catById(c.category);
-  if (cat) box.append(el('span', { class: 'tag cat', text: `${cat.emoji} ${cat.name}` }));
+  if (cat) box.append(el('span', { class: 'tag cat', text: cat.name }));
   const n = dayDiff(c);
   if (n !== null && kindOf(c) === 'gift') {
     const when = new Date(c.expires + 'T00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });

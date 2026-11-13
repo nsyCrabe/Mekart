@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mekart</title>
 <meta name="description" content="Toutes tes cartes de fidélité dans ta poche, même hors ligne.">
-<meta name="theme-color" content="#f2f0e9" id="themeColorMeta">
+<meta name="theme-color" content="#fafaf7" id="themeColorMeta">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mekart">
@@ -24,7 +24,7 @@
   </div>
   <div class="top-actions">
     <button class="round-button" id="searchToggle" type="button" aria-label="Rechercher" data-icon="search"></button>
-    <button class="round-button" id="themeButton" type="button" aria-label="Choisir le thème" data-icon="palette"></button>
+    <button class="round-button" id="themeButton" hidden type="button" aria-label="Choisir le thème" data-icon="palette"></button>
     <button class="round-button" id="menuButton" type="button" aria-label="Sauvegarde et réglages" data-icon="sliders"></button>
   </div>
 </header>
@@ -45,7 +45,7 @@
 
   <div class="toolbar" id="toolbar">
     <div class="filter-row" id="filterRow" aria-label="Filtres"></div>
-    <div class="sort-row">
+    <details class="view-options"><summary>Affichage et tri</summary><div class="sort-row">
       <select class="sort-select" id="sortSelect" aria-label="Trier les cartes">
         <option value="recent">Récentes</option>
         <option value="used">Plus utilisées</option>
@@ -54,7 +54,7 @@
       </select>
       <button class="chip" id="reorderButton" type="button">↕ Réorganiser</button>
       <button class="chip" id="viewButton" type="button" aria-label="Changer l'affichage"></button>
-    </div>
+    </div></details>
   </div>
   <div class="reorder-bar" id="reorderBar" hidden>
     <span>Glisse les cartes pour les déplacer.</span>
@@ -218,7 +218,7 @@
   <div class="menu-list">
     <button class="menu-item" id="menuAppearanceButton" type="button">
       <span class="menu-icon" aria-hidden="true" data-icon="palette"></span>
-      <span><strong>Apparence Mekart</strong><small>Mode clair, sombre ou automatique · couleurs du site</small></span>
+      <span><strong>Apparence Mekart</strong><small>Clair, sombre ou automatique</small></span>
     </button>
   </div>
   <p class="menu-section-heading">Données et sauvegardes</p>
